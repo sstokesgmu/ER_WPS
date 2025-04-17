@@ -1,10 +1,5 @@
 print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 
-package.path = package.path ..
-    ";/home/deck/.luarocks/share/lua/5.4/?.lua;/home/deck/Desktop/EldenRing_Hackathon/Server/lua_modules/share/lua/5.4/?.lua"
-package.cpath = package.cpath ..
-    ";/home/deck/.luarocks/lib/lua/5.4/?.so;/home/deck/Desktop/EldenRing_Hackathon/Server/lua_modules/lib/lua/5.4/?.so"
-
 local socket = require("socket")
 local cjson = require("cjson")
 local SERVER = require("Server")
@@ -32,7 +27,6 @@ while udpServer.running do
         stamina = 100,
         mp = 10
     }
-
     --If data is received
     if data then
         print("Data recieved from ip: " .. ip)
