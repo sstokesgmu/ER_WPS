@@ -4,14 +4,15 @@ Server = {
     protocol   = nil,
     ip         = nil,
     portNumber = nil,
+    targetip   = nil,
 }
 
 
-local function initialiazeSocket(socket, address, port)
+local function initialiazeSocket(socket, serverAddress, port)
     local udp = socket.udp()
     --Set up Server Settings
     udp:settimeout(0)
-    udp:setsockname(address, port)
+    udp:setsockname(serverAddress, port)
     local ip, portNumber = udp:getsockname()
     return udp, ip, portNumber
 end
@@ -22,11 +23,11 @@ end
 
 
 --Instance
-function Server.new(socket, address, port, running)
+function Server.new(socket, serverAddress, port, targetAddress, running)
     local self = setmetatable({}, { __index = Server })
-    --Immediately Invoked Function
     self.running = running
-    self.protocol, self.ip, self.portNumber = initialiazeSocket(socket, address, port)
+    self.targetip = targetAddress
+    self.protocol, self.ip, self.portNumber = initialiazeSocket(socket, serverAddress, port)
     return self
 end
 
