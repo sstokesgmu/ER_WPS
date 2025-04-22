@@ -28,6 +28,8 @@ while udpServer.running do
     data = {
         playerPos = { 10, 10, 3 },
     }
+
+    --Check the format instead of if the data is recieved  
     --If data is received
     if data then
         --Format the data then send the to the client map server
@@ -41,3 +43,5 @@ while udpServer.running do
 end
 print
 ('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+
+

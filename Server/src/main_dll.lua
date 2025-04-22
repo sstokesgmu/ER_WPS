@@ -21,12 +21,12 @@ while udpServer.running do
     local data, ip, port = udpServer.protocol:receivefrom()
 
     --New datas
-    local gameData = {
-        playerPos = { 10, 10, 3 },
-        hp = 100,
-        stamina = 100,
-        mp = 10
-    }
+    -- local gameData = {
+    --     playerPos = { 10, 10, 3 },
+    --     hp = 100,
+    --     stamina = 100,
+    --     mp = 10
+    -- }
     --If data is received
     if data then
         print("Data recieved from ip: " .. ip)

@@ -17,11 +17,6 @@ local function initialiazeSocket(socket, serverAddress, port)
     return udp, ip, portNumber
 end
 
-
-
-
-
-
 --Instance
 function Server.new(socket, serverAddress, port, targetAddress, running)
     local self = setmetatable({}, { __index = Server })
