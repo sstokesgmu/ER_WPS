@@ -1,13 +1,12 @@
 [ENABLE]
 //code from here to '[DISABLE]' will be used to enable the cheat
 
- 
+
 
 {$lua}
 
 local PlayerData = {
-     -- {'OriginX', 'OriginY'},
-      {'X_POS', 'Y_POS'}
+    pos =  {'X_POS', 'Y_POS'}
 }
 
 local WorldData = {
@@ -15,7 +14,7 @@ local WorldData = {
 }
 
 local NPCData = {
-    
+
 }
 
 
