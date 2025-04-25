@@ -54,13 +54,20 @@ while udpServer.running do
         playerPos = { 10, 10, 3 },
     }
 
-    --Check the format instead of if the data is recieved  
+    --Check the format instead of if the data is recieved
     --If data is received
     if data then
         --Format the data then send the to the client map server
+<<<<<<< HEAD
         local json = JSON.encode(data)
         -- udpServer.protocol:sendto(json, udpServer.targetip, udpServer.portNumber);
         print("Sending data to " .. udpServer.targetip .. ":" .. udpServer.portNumber)
+=======
+        local json = cjson.encode(data)
+        print(json)
+        -- udpServer.protocol:sendto(json, udpServer.targetip, udpServer.portNumber);
+        -- print("Sending data to " .. udpServer.targetip .. ":" .. udpServer.portNumber)
+>>>>>>> 65095f7d7c60828ba60db0c5ac392831c14bdbce
     else
         print("No data is recieved")
         socket.sleep(1);
@@ -68,5 +75,3 @@ while udpServer.running do
 end
 print
 ('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-
-

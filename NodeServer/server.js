@@ -1,8 +1,10 @@
 import dgram from "dgram";
 import { WebSocket } from "ws";
+
 const udpServer = dgram.createSocket("udp4");
 
 let obj = {};
+let playerLoaded = false;
 
 //Create a status object tracks the state of server connection
 //rinfo => is remote address info
@@ -15,6 +17,8 @@ udpServer.on("message", (msg, rinfo) => {
     const obj = JSON.parse(msg);
     console.log(typeof obj); // Should show 'object'
     console.log(obj); // Log the parsed object to verify it's correctly formatted
+
+    //When the player loads the we find the origin again loads => teleport, die, start game
   } catch (e) {
     console.error("Failed to parse message as JSON:", e);
   }
@@ -23,7 +27,6 @@ udpServer.on("listening", () => {
   const address = udpServer.address();
   console.log(`Starting server`);
   console.log(`Server listening ${address.address}: ${address.port}`);
-  obj[address] = address;
 });
 
 udpServer.on("close", () => {
