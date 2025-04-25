@@ -4,3 +4,4 @@ lua
 lua_modules
 .luarocks
 .zed
+Rules
