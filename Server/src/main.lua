@@ -34,6 +34,7 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
     self.protocol, self.ip, self.portNumber = initialiazeSocket(socket, serverAddress, port)
     return self
 end
+
 -- Listen on all available interface using Ipv4
 local udpServer = Server.new(socket, "*", 4000, "192.168.1.160")
 print(type(udpServer))
@@ -58,16 +59,14 @@ while udpServer.running do
     --If data is received
     if data then
         --Format the data then send the to the client map server
-<<<<<<< HEAD
         local json = JSON.encode(data)
         -- udpServer.protocol:sendto(json, udpServer.targetip, udpServer.portNumber);
         print("Sending data to " .. udpServer.targetip .. ":" .. udpServer.portNumber)
-=======
+
         local json = cjson.encode(data)
         print(json)
         -- udpServer.protocol:sendto(json, udpServer.targetip, udpServer.portNumber);
         -- print("Sending data to " .. udpServer.targetip .. ":" .. udpServer.portNumber)
->>>>>>> 65095f7d7c60828ba60db0c5ac392831c14bdbce
     else
         print("No data is recieved")
         socket.sleep(1);
