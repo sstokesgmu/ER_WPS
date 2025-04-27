@@ -1,16 +1,10 @@
 -----------------------------------------------
 -- Goal: we need a script that can access the data from Cheat Engines address list and transfer that data to the node server
 -- We first have a series of tables with predefined values Player, NPC, and World -> convert that to JSON -> then send that data out
-
-
-
 --? OPLog
 -----------------------------------------------
 local socket = require("socket")
 local JSON = require("lunajson")
-
-
-
 -- DATA Retrieval
 local PlayerData = {
     { 'X_POS', 'Y_POS' },
@@ -18,10 +12,11 @@ local PlayerData = {
     { 'Vgr',   'Mnd',  'End', 'Str',     'Dsc', 'Int', 'Fth', 'Arc' },
     --Add Status
 }
-local NPCData = {
-    DHunter = { 29, 39 },
-    Blaid = { 400, 399 },
-    Melina = { 80, 200 }
+local NPC_Lim_Data = {
+    Melina = {21800000, 21801000, 21801034, 21803000,21809000},
+    Boc = {},
+    S_Sellen ={523160000,523160010,523160010,523160020,523160020,523160020},
+    Blaidd = {20100000,20101000,20107500,20108000,20109000,20109010,20109020,20109040, 20109064, 20109110,20109120,20109140,20109210,20109240,20109310,20109410},
 }
 
 local worldOrigin = {
@@ -54,10 +49,7 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
 end
 
 -- STATE MACHINE
-
 StateMachine = {}
-
-
 function StateMachine.new()
     local self = setmetatable({}, { _index = StateMachine })
     self.current = "INITIAL"
@@ -78,7 +70,13 @@ function StateMachine.new()
         --            print("Initializing system...")
         --            -- Fetch initial game data, set up initial connections, etc.
         --        end,
-        INITIAL, --fullread --After this change the state to Running on success
+        INITIAL = function ()
+            print("Starting System")
+            print("Starting first call")
+
+            local playerProps = buildPropTable(PlayerData, 1, #PlayerData)
+            local NpcProps = 
+        end, --fullread --After this change the state to Running on success
         RUNNING,
         CLOSE
     }
@@ -114,6 +112,7 @@ function buildPropTable(table, start, limit)
             retriveTable[#retriveTable + 1] = table[i][v]
         end
     end
+    return retirveTable 
 end
 
 function fetchValueByNames(table)
@@ -174,3 +173,59 @@ function stopMonitoring()
     udpServer.protocol:close();
     print("Closed program")
 end
+
+
+
+--- NPC Functions 
+
+local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11  24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
+local WorldChrMan
+
+if addr then 
+    WorldChrMan = addr+24+readInteger(addr+19,true)
+end 
+
+function GetCharacterCount()
+    local pointer=readQword(WorldChrMan)
+    if not pointer then return 0 end 
+    local begin=readQword(pointer+0x1f1B8)
+    local finish=readQword(pointer+0x1F1C0)
+    if not begin or not finish or begin>=finish then return 0 end 
+    return (finish-begin)/8
+end
+
+--Its' a digging funtion
+function GetPlayerPosAddr()
+    local pointer=readQword(WorldChrMan)
+    if not pointer then return end 
+    pointer=readQword(pointer + 0x1E508)
+    if not pointer then return end 
+    pointer=readQword(pointer + 0x190)
+    if not pointer then return end 
+    pointer=readQword(pointer + 0x68)
+    if not pointer then return end 
+    return pointer 
+end 
+
+function GetPlayerPosition(asbytes)
+    local pointer = GetPlayerPosAddr()
+    if not pointer then return end 
+    if asbytes then return (readBytes(p+0x70,12,true))
+    return readFloat(p+0x70), readFloat(p+0x74),readFloat(p+0x78)
+end 
+
+function TraverseNPCTable()
+    local p=readQword(WorldChrMan)
+    if not p then return end 
+    local begin=readQword(p+0x1F1B8)
+    if not begind the return end 
+
+
+    local px, py, pz = GetPlayerPosition()
+    if not px or not py or not pz then return end 
+
+    local count = GetCharacterCount()
+    if count and 
+end
+
+
