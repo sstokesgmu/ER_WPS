@@ -9,6 +9,11 @@ local JSON = require("lunajson")
 
 ------------------------------------------------------------------------------------------------
 -- Timer
+
+
+
+
+
 ------------------------------------------------------------------------------------------------
 -- This is definately not the right numbers
 local udpServer = Server.new(socket, '*', 4000, "local")
@@ -85,6 +90,10 @@ end
 
 ------------------------------------------------------------------------------------------------
 -- STATE MACHINE 
+
+
+
+
 ------------------------------------------------------------------------------------------------
 StateMachine = {}
 function StateMachine.new()
@@ -135,12 +144,17 @@ end
 
 ------------------------------------------------------------------------------------------------
 --Data Collector Class 
+
+
+
+
 ------------------------------------------------------------------------------------------------
 DataCollector = {}
 function DataCollector.new()
     local self = setmetatable({}, {__index = DataCollector})
     self.playerData = nil
     self.NpcData = nil
+    self.WorldChrMan = nil  -- Initialize WorldChrMan as an instance variable
 
     -- Additional setup code like finding player, location, etc.
     return self
@@ -201,7 +215,7 @@ function DataCollector:ReturnNearPOI()
     local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
     local WorldChrMan
     if addr then 
-        WorldChrMan = addr + 24 + readInteger(addr + 19, true)
+        WorldChrMan = addr + 24 + readInteger(addr + 19, true) --:
     end
     return self:TraverseNPCTable(WorldChrMan)
 end 
@@ -209,42 +223,74 @@ end
 function DataCollector:GetCharacterCount(WorldChrMan)
     local pointer = readQword(WorldChrMan)
     if not pointer then return 0 end 
-    local begin = readQword(pointer + 0x1f1B8)
+    local begin = readQword(pointer + 0x1f1B8) --:
     local finish = readQword(pointer + 0x1F1C0)
     if not begin or not finish or begin >= finish then return 0 end 
     return (finish - begin) / 8
 end
 
-function DataCollector:GetPlayerPosAddr(WorldChrMan)
-    local pointer = readQword(WorldChrMan)
-    if not pointer then return end 
+function DataCollector:GetPlayerPosAddr()
+    local pointer = readQword(self.WorldChrMan)  -- Access self.WorldChrMan
+    if not pointer then return end
     pointer = readQword(pointer + 0x1E508)
-    if not pointer then return end 
+    if not pointer then return end
     pointer = readQword(pointer + 0x190)
-    if not pointer then return end 
+    if not pointer then return end
     pointer = readQword(pointer + 0x68)
-    if not pointer then return end 
-    return pointer 
-end 
+    if not pointer then return end
+    return pointer
+end
+
+function DataCollector:GetPlayerPosition(asbytes)
+    local p = self:GetPlayerPosAddr()
+    if not p then return end
+    if asbytes then return readBytes(p + 0x70, 12, true) end
+    return readFloat(p + 0x70), readFloat(p + 0x74), readFloat(p + 0x78)
+end
 
 function DataCollector:TraverseNPCTable(WorldChrMan)
     local p = readQword(WorldChrMan)
-    if not p then return end 
+    if not p then return end
+
     local begin = readQword(p + 0x1F1B8)
-    if not begin then return end 
+    if not begin then return end
+
     local px, py, pz = self:GetPlayerPosition()
-    if not px or not py or not pz then return end 
+    if not px or not py or not pz then return end
+    print("whats popping")
+
     local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
-    for i = 0, count - 1 do
+
+    print(count)
+    for i = 1, count do
         local npcPtr = readQword(begin + i * 8)
         if npcPtr and npcPtr >= 65536 then
-            print(string.format("Found NPC at memory address: %X", npcPtr))
-            table.insert(result, npcPtr)
+            -- Read the parameter ID
+            local paramId = readInteger(npcPtr + 0x60, true)
+
+            -- Read animation or similar data
+            local anim = readInteger(npcPtr + 0x40, true)
+
+            -- Read NPC's position (x, y, z)
+            local x = readFloat(npcPtr + 0x70)
+            local y = readFloat(npcPtr + 0x74)
+            local z = readFloat(npcPtr + 0x78)
+
+            -- Handle possible nil values by providing default values
+            paramId = paramId or 0  -- Default to 0 if paramId is nil
+            anim = anim or 0        -- Default to 0 if anim is nil
+            x = x or 0.0            -- Default to 0 if x is nil
+            y = y or 0.0            -- Default to 0 if y is nil
+            z = z or 0.0            -- Default to 0 if z is nil
+
+            -- Add the NPC data to your result here
+            table.insert(result, string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
         end
     end
+
+    -- Now concatenate the result table into a string
+    print(table.concat(result, ", "))
     return result
 end
-
-
 
