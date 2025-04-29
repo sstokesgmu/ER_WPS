@@ -121,8 +121,12 @@ function StateMachine.new()
         INITIAL = function()
             print("Starting System")
             print("Starting first call")
+            local playerdata = dataCollector.buildTablefromAddressList(dataCollector.playerData,1,1);
 
-            dataCollector.buildPropTable()
+            -- What does playerdata look like?
+
+
+
         end, --fullread --After this change the state to Running on success
         RUNNING,
         CLOSE = function()
@@ -149,7 +153,6 @@ end
 
 
 ------------------------------------------------------------------------------------------------
-
 Player = {}
 function Player.new()
     local self = setmetatable({}, {__index = Player})
@@ -158,29 +161,34 @@ function Player.new()
     self.baseStats = {}
     self.AddStats = {}
     self.BuildStatus = {}
+    return self
 end
 
 NPC = {}
-function NPC.new()
+function NPC.new(id,name,address,anim,coords,dist)
     local self = setmetatable({},{__index = NPC})
-    self.paramId = nil
-    self.name = nil
-    self.animationNum = nil
-    self.address = nil
-    self.coords = {}
-    self.distToPlayer = nil
+    self.paramId = id
+    self.name = name
+    self.address = address
+    self.animationNum = anim
+    self.coords = coords
+    self.distToPlayer = dist
+    return self
 end
 
 DataCollector = {}
 function DataCollector.new()
     local self = setmetatable({}, { __index = DataCollector })
+    self.WorldChrMan = (function()
+        local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
+        if addr then return addr + 24 + readInteger(addr + 19, true) end
+     end)()
     self.playerIns = Player.new()
     self.npcsIns = {}
-
     self.playerData = {
-        { 'X_POS', 'Y_POS' },
-        { 'Hp', 'Fp',   'Stm', 'Ep_Load', 'Ps',  'Mem' },
-        { 'Vgr','Mnd','End', 'Str','Dsc', 'Int', 'Fth', 'Arc' },
+        coords2D = { 'X_POS', 'Y_POS' },
+        baseStats = { 'Hp', 'Fp',   'Stm', 'Ep_Load', 'Ps',  'Mem' },
+        addStats = { 'Vgr','Mnd','End', 'Str','Dsc', 'Int', 'Fth', 'Arc' },
     }
     self.LocationOrigins = {
         Round_Table = {0,0,0},
@@ -232,51 +240,17 @@ function DataCollector.new()
     return self
 end
 
--- NPC Functions
-function DataCollector.buildPropTable(table, start, limit)
+-- 
+function DataCollector.buildTablefromAddressList(table, start, limit)
     if limit < start then
         limit = start + 1
     elseif limit > #table then
         limit = #table - 1
     end
     local retrieveTable = {}
-
-    -- Not inclusive
-    for i = start, #table do
-        if i == limit then return retrieveTable end
-        for _, v in ipairs(table[i]) do
-            table.insert(retrieveTable, v)
-        end
-    end
+ 
+    
     return retrieveTable
-end
-
-function DataCollector.fetchValueByNames(table)
-    local result = {}
-    local addressList = getAddressList()
-    for _, k in ipairs(table) do
-        local memRecord = addressList.getMemoryRecordByDescription(k)
-        result[#result + 1] = memRecord.value
-    end
-    return result
-end
-
-function DataCollector:ReturnNearPOI()
-    local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
-    local WorldChrMan
-    if addr then
-        WorldChrMan = addr + 24 + readInteger(addr + 19, true) --:
-    end
-    return self:TraverseNPCTable(WorldChrMan)
-end
-
-function DataCollector:GetCharacterCount(WorldChrMan)
-    local pointer = readQword(WorldChrMan)
-    if not pointer then return 0 end
-    local begin = readQword(pointer + 0x1f1B8) --:
-    local finish = readQword(pointer + 0x1F1C0)
-    if not begin or not finish or begin >= finish then return 0 end
-    return (finish - begin) / 8
 end
 
 function DataCollector:GetPlayerPosAddr()
@@ -296,6 +270,21 @@ function DataCollector:GetPlayerPosition(asbytes)
     if not p then return end
     if asbytes then return readBytes(p + 0x70, 12, true) end
     return readFloat(p + 0x70), readFloat(p + 0x74), readFloat(p + 0x78)
+end
+
+
+--NPC Functions
+function DataCollector:ReturnNearPOI()
+    return self:TraverseNPCTable(WorldChrMan)
+end
+
+function DataCollector:GetCharacterCount(WorldChrMan)
+    local pointer = readQword(WorldChrMan)
+    if not pointer then return 0 end
+    local begin = readQword(pointer + 0x1f1B8) --:
+    local finish = readQword(pointer + 0x1F1C0)
+    if not begin or not finish or begin >= finish then return 0 end
+    return (finish - begin) / 8
 end
 
 function DataCollector.distanceBetween(pos1, pos2)
@@ -322,6 +311,7 @@ function DataCollector:FindChunk()
     return targetKey
 end
 
+
 function DataCollector:TraverseNPCTable(WorldChrMan)
     local p = readQword(WorldChrMan)
     if not p then return end
@@ -335,7 +325,7 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     --local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
 
-    local locationKey = self:FindChunk()
+    local locationKey = self:FindChunk() --This can be stored in world data
     print("This is where the player is at: ", locationKey)
 
     -- find possible npcs based on character location 
@@ -348,40 +338,37 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     end
     if not npcs then return print("There are no npcs at this chunk", locationKey) end
 
-    print(table.concat(npcs,"\n"))
+    for i = 1, count do
+        local npcPtr = readQword(begin + i * 8)
+        if npcPtr and npcPtr >= 65536 then
+            -- Read the parameter ID
+            local paramId = readInteger(npcPtr + 0x60, true)
+
+
+
+
+            -- Read animation or similar data
+            local anim = readInteger(npcPtr + 0x40, true)
+
+            -- Read NPC's position (x, y, z)
+            local x = readFloat(npcPtr + 0x70)
+            local y = readFloat(npcPtr + 0x74)
+            local z = readFloat(npcPtr + 0x78)
+
+            -- Handle possible nil values by providing default values
+            paramId = paramId or 0 -- Default to 0 if paramId is nil
+            anim = anim or 0       -- Default to 0 if anim is nil
+            x = x or 0.0           -- Default to 0 if x is nil
+            y = y or 0.0           -- Default to 0 if y is nil
+            z = z or 0.0           -- Default to 0 if z is nil
+
+            -- -- Add the NPC data to your result here
+            -- table.insert(result,
+            --     string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
+        end
+    end
+
+   // Now concatenate the result table into a string
+    print(table.concat(result, ", "))
+    return result
 end
-
-    -- for i = 1, count do
-    --     local npcPtr = readQword(begin + i * 8)
-    --     if npcPtr and npcPtr >= 65536 then
-    --         -- Read the parameter ID
-    --         local paramId = readInteger(npcPtr + 0x60, true)
-
-
-
-
-    --         -- Read animation or similar data
-    --         local anim = readInteger(npcPtr + 0x40, true)
-
-    --         -- Read NPC's position (x, y, z)
-    --         local x = readFloat(npcPtr + 0x70)
-    --         local y = readFloat(npcPtr + 0x74)
-    --         local z = readFloat(npcPtr + 0x78)
-
-    --         -- Handle possible nil values by providing default values
-    --         paramId = paramId or 0 -- Default to 0 if paramId is nil
-    --         anim = anim or 0       -- Default to 0 if anim is nil
-    --         x = x or 0.0           -- Default to 0 if x is nil
-    --         y = y or 0.0           -- Default to 0 if y is nil
-    --         z = z or 0.0           -- Default to 0 if z is nil
-
-    --         -- Add the NPC data to your result here
-    --         table.insert(result,
-    --             string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
-    --     end
-    -- end
-
-    -- Now concatenate the result table into a string
---     print(table.concat(result, ", "))
---     return result
--- end

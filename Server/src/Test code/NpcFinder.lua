@@ -1,26 +1,4 @@
 ---@class Player
-Player = {}
-function Player.new()
-    local self = setmetatable({}, {__index = Player})
-    self.coords2D = {}
-    self.coords3D = {}
-    self.baseStats = {}
-    self.AddStats = {}
-    self.BuildStatus = {}
-    return self
-end
-
-NPC = {}
-function NPC.new(id,name,address,anim,coords,dist)
-    local self = setmetatable({},{__index = NPC})
-    self.paramId = id
-    self.name = name
-    self.address = address
-    self.animationNum = anim
-    self.coords = coords
-    self.distToPlayer = dist
-    return self
-end
 
 DataCollector = {}
 function DataCollector.new()
@@ -88,23 +66,6 @@ function DataCollector.distanceBetween(pos1, pos2)
     return math.sqrt((px-nx)*(px-nx)+(py-ny)*(py-ny)+(pz-nz)*(pz-nz))
 end
 
-function DataCollector:FindChunk()
-    local minDistance = math.huge
-    local targetKey = nil
-    for k,v in pairs(self.LocationOrigins) do
-        print(k,v);
-        if not self.playerIns.coords3D then 
-            print("Player instance or player coordinates are not found")
-            break
-        end
-        local dist = self.distanceBetween(self.playerIns.coords3D,v)
-        if dist < minDistance then
-            minDistance = dist
-            targetKey = k
-        end
-    end
-    return targetKey
-end
 
 function DataCollector:TraverseNPCTable(WorldChrMan)
     -- local p = readQword(WorldChrMan)
@@ -119,7 +80,7 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     --local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
 
-    local locationKey = self:FindChunk()
+
     print("This is where the player is at: ", locationKey)
 
     -- find possible npcs based on character location 
@@ -166,11 +127,7 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     print(#self.npcsIns)
 end
 
-function DepthSearch(target,table)
-    --Base case: When to stop recursion
-        --1. Target is found 
-        --2. reached the end to the table
-        
+function DepthSearch(target,table)       
     --Base case 1 : the table is empty, stop recursion and return false 
     if not table then return false end
 

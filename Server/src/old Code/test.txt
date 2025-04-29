@@ -1,0 +1,89 @@
+
+StateMachine = {}
+function StateMachine.new()
+    local self = setmetatable({}, { _index = StateMachine })
+    self.current = "INITIAL"
+    self.next = nil
+    --https://github.com/iskolbin/lpriorityqueue
+    --https://www.reddit.com/r/lua/comments/7d0rjc/how_to_approach_a_queue_in_lua_for_pathfinding/
+    --https://gist.github.com/LukeMS/89dc587abd786f92d60886f4977b1953
+    self.queue = {}
+    self.States = {
+        OPEN = 1,
+        RUNNING = 2,
+        PAUSED = 3,
+        CLOSE = 4
+    }
+    --Actions based on each STATE
+    self.actions = {
+        -- INITIAL = function()
+        --            print("Initializing system...")
+        --            -- Fetch initial game data, set up initial connections, etc.
+        --        end,
+        INITIAL = function()
+            print("Starting System")
+            print("Starting first call")
+            local playerdata = dataCollector.buildTablefromAddressList(dataCollector.playerData,1,1);
+
+            -- What does playerdata look like?
+
+
+
+        end, --fullread --After this change the state to Running on success
+        RUNNING,
+        CLOSE = function()
+            print("Closing Server")
+        end
+    }
+    return self
+end
+
+Player = {}
+function Player.new()
+    local self = setmetatable({}, {__index = Player})
+    self.coords2D = {}
+    self.coords3D = {}
+    self.baseStats = {}
+    self.AddStats = {}
+    self.BuildStatus = {}
+    return self
+end
+
+DataCollector = {}
+function DataCollector.new()
+    local self = setmetatable({}, { __index = DataCollector })
+    self.WorldChrMan = (function()
+        local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
+        if addr then return addr + 24 + readInteger(addr + 19, true) end
+     end)()
+    self.playerIns = Player.new()
+    self.npcsIns = {}
+    self.playerData = {
+        coords2D = { 'X_POS', 'Y_POS' },
+        baseStats = { 'Hp', 'Fp',   'Stm', 'Ep_Load', 'Ps',  'Mem' },
+        addStats = { 'Vgr','Mnd','End', 'Str','Dsc', 'Int', 'Fth', 'Arc' },
+    }
+end 
+
+function DataCollector.buildTablefromAddressList(table, start, limit)
+    if limit < start then
+        limit = start + 1
+    elseif limit > #table then
+        limit = #table - 1
+    end
+    local retrieveTable = {}
+    -- Not inclusive
+    for i = start, #table do
+        if i == limit then return retrieveTable end
+        for _, v in ipairs(table[i]) do
+            table.insert(retrieveTable, v)
+        end
+    end
+    local result = {}
+    local addressList = getAddressList()
+    for _, k in ipairs(retrieveTable) do
+        local memRecord = addressList.getMemoryRecordByDescription(k)
+        result[#result + 1] = memRecord.value
+    end
+    return result
+end
