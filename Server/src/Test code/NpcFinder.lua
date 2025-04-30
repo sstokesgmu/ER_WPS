@@ -149,4 +149,4 @@ end
 local dataTable = DataCollector.new()
 dataTable.playerIns.coords3D = {0, 0, 0} -- Example: Set player position
 
-dataTable:TraverseNPCTable()
+dataTable:TraverseNPCTable()        

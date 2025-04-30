@@ -121,9 +121,14 @@ function StateMachine.new()
         INITIAL = function()
             print("Starting System")
             print("Starting first call")
-            local playerdata = dataCollector.buildTablefromAddressList(dataCollector.playerData,1,1);
+            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData,1,2)
+            if playerdata == nil then error("Player data returned nil") end
+            local coords2D, baseStats, addStats, buildStats = table.unpack(playerdata)
+            local coords3D = DATACOLLECTOR:GetPlayerPosition(false)
 
-            -- What does playerdata look like?
+
+            DATACOLLECTOR.playerIns = Player.new(coords2D,coords3D,baseStats,addStats,buildStats)
+
 
 
 
@@ -136,7 +141,7 @@ function StateMachine.new()
     return self
 end
 
-function StateMachine:callStateFunctions() self.actions[self.current]() end
+function StateMachine:executeState() self.actions[self.current]() end
 
 function StateMachine:changeState()
     if self.States[newState] then
@@ -145,7 +150,6 @@ function StateMachine:changeState()
         print("Invalid State: ", newState)
     end
 end
-
 ------------------------------------------------------------------------------------------------
 --Data Collector Class
 
@@ -154,13 +158,13 @@ end
 
 ------------------------------------------------------------------------------------------------
 Player = {}
-function Player.new()
+function Player.new(coords2D,coords3D,baseStats,addStats,buildStats)
     local self = setmetatable({}, {__index = Player})
-    self.coords2D = {}
-    self.coords3D = {}
-    self.baseStats = {}
-    self.AddStats = {}
-    self.BuildStatus = {}
+    self.coords2D = coords2D
+    self.coords3D = coords3D
+    self.baseStats = baseStats
+    self.addStats = addStats
+    self.buildStats = {}
     return self
 end
 
@@ -183,7 +187,7 @@ function DataCollector.new()
         local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
         if addr then return addr + 24 + readInteger(addr + 19, true) end
      end)()
-    self.playerIns = Player.new()
+    self.playerIns = nil
     self.npcsIns = {}
     self.playerData = {
         coords2D = { 'X_POS', 'Y_POS' },
@@ -241,16 +245,39 @@ function DataCollector.new()
 end
 
 -- 
-function DataCollector.buildTablefromAddressList(table, start, limit)
+function DataCollector.buildTablefromAddressList(list, start, limit)
     if limit < start then
         limit = start + 1
-    elseif limit > #table then
-        limit = #table - 1
+    elseif limit > #list then
+        limit = #list - 1
     end
     local retrieveTable = {}
- 
+    for k, v in ipairs(list) do
+        if k > limit then
+            print("Finished at", k, v)
+            break  -- Optionally stop after exceeding the limit
+        end
+       local blankT = {}
+       DepthExecute(v, function(arg) 
+            local value = getAddressList().getMemoryRecordByDescription(arg)
+            table.insert(blankT, value)
+
+        end)
+       table.insert(retrieveTable, blankT)
+    end
     
     return retrieveTable
+end
+
+function DepthExecute(table, callback)
+    -- Base Case the table is empty exit recursion loop
+    if not table then return false end
+    -- the value is a table get the values move them up 
+    for _,v in pairs(table) do
+        if type(v) == "table" then DepthExecute(v,callback)
+        else callback(v)
+        end
+    end
 end
 
 function DataCollector:GetPlayerPosAddr()
@@ -322,9 +349,6 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local px, py, pz = self:GetPlayerPosition()
     if not px or not py or not pz then return end
 
-    --local count = self:GetCharacterCount(WorldChrMan)
-    local result = {}
-
     local locationKey = self:FindChunk() --This can be stored in world data
     print("This is where the player is at: ", locationKey)
 
@@ -338,37 +362,46 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     end
     if not npcs then return print("There are no npcs at this chunk", locationKey) end
 
+    local count = self:GetCharacterCount(WorldChrMan)
+    local result = {}
+
+
     for i = 1, count do
         local npcPtr = readQword(begin + i * 8)
         if npcPtr and npcPtr >= 65536 then
             -- Read the parameter ID
             local paramId = readInteger(npcPtr + 0x60, true)
 
-
-
+            local foundNPC = DepthSearch(paramId,npcs)
+            if not foundNPC then break end
 
             -- Read animation or similar data
             local anim = readInteger(npcPtr + 0x40, true)
 
+
+            if  anim <= 0 then break end 
             -- Read NPC's position (x, y, z)
             local x = readFloat(npcPtr + 0x70)
             local y = readFloat(npcPtr + 0x74)
             local z = readFloat(npcPtr + 0x78)
 
             -- Handle possible nil values by providing default values
-            paramId = paramId or 0 -- Default to 0 if paramId is nil
-            anim = anim or 0       -- Default to 0 if anim is nil
-            x = x or 0.0           -- Default to 0 if x is nil
-            y = y or 0.0           -- Default to 0 if y is nil
-            z = z or 0.0           -- Default to 0 if z is nil
+            -- paramId = paramId or 0 -- Default to 0 if paramId is nil
+            -- anim = anim or 0       -- Default to 0 if anim is nil
+            -- x = x or 0.0           -- Default to 0 if x is nil
+            -- y = y or 0.0           -- Default to 0 if y is nil
+            -- z = z or 0.0           -- Default to 0 if z is nil
 
+
+            local npc = NPC.new(paramId,foundNPC,22993, {x,y,z}, self.distanceBetween({x,y,z},DATACOLLECTOR.playerIns.coords3D))
+            table.insert(result, npc);
+            
             -- -- Add the NPC data to your result here
             -- table.insert(result,
             --     string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
         end
     end
 
-   // Now concatenate the result table into a string
     print(table.concat(result, ", "))
     return result
 end

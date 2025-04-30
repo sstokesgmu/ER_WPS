@@ -33,7 +33,7 @@ function StateMachine.new()
             print(#playerdata)
 
             -- Print the length of the playerdata table
-print("Length of playerdata:", #playerdata)
+            print("Length of playerdata:", #playerdata)
 
         -- Print the content of each sub-table in playerdata
         for i, subTable in ipairs(playerdata) do
