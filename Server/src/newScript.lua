@@ -15,57 +15,7 @@ local JSON = require("lunajson")
 
 
 ------------------------------------------------------------------------------------------------
--- This is definately not the right numbers
-local udpServer = Server.new(socket, '*', 4000, "local")
-local stateMachine = StateMachine.new()
-local DATACOLLECTOR = DataCollector.new()
-local timer = nil
-
-function startMonitoring()
-    --Create Server and StateMachine
-    if timer ~= nil then -- we already create the timer no need to make another one
-        return
-    end
-    -- Crate an instance of timer
-    timer = createTimer(getMainForm());
-    timer.Interval = 100;
-    udpServer.running = true;
-    timer.OnTimer = function(sender)
-        local success, error = pcall(
-            function()
-                -- Listen for server call or input from the use
-                if stateMachine.next ~= stateMachine.current then
-                    --Then there was a state change
-                    stateMachine.current = stateMachine.next;
-                end
-
-                -- call the current state methods
-                local result = stateMachine.actions[stateMachine.current]();
-                local data = JSON.encode(result);
-                --nil check? why
-                --udpServer.protocol:sendto(data, udpServer.targetip, udpServer.portNumber)
-                --Print a log
-                print("Successfully sent data to: ", udpServer.targetip, "  with a  state of: ",
-                    StateMachine.currentState)
-            end
-        )
-        if not success then
-            print("Error occurred: ", error)
-        end
-    end
-end
-
-function stopMonitoring()
-    --There is no timer to destroy
-    if timer == nil then return end
-    timer.destroy() --cleanup
-    timer = nil
-    local newState = "CLOSE";
-    local result = stateMachine:setState(newState)
-    stateMachine = nil
-    udpServer.protocol:close();
-    print("Closed program")
-end
+-- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
 
 -- Server Configuration and Creation
 Server = {
@@ -88,15 +38,96 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
         local ip, portNumber = udp:getsockname()
         return udp, ip, portNumber
     end)()
+    return self
 end
 
-------------------------------------------------------------------------------------------------
--- STATE MACHINE
+Player = {}
+function Player.new(coords2D, coords3D, baseStats, addStats, buildStats)
+    local self = setmetatable({}, { __index = Player })
+    self.coords2D = coords2D
+    self.coords3D = coords3D
+    self.baseStats = baseStats
+    self.addStats = addStats
+    self.buildStats = {}
+    return self
+end
 
+NPC = {}
+function NPC.new(id, name, address, anim, coords, dist)
+    local self = setmetatable({}, { __index = NPC })
+    self.paramId = id
+    self.name = name
+    self.address = address
+    self.animationNum = anim
+    self.coords = coords
+    self.distToPlayer = dist
+    return self
+end
 
+DataCollector = {}
+function DataCollector.new()
+    local self = setmetatable({}, { __index = DataCollector })
+    self.WorldChrMan = (function()
+        local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
+        if addr then return addr + 24 + readInteger(addr + 19, true) end
+    end)()
+    self.playerIns = nil
+    self.npcsIns = {}
+    self.playerData = {
+        coords2D = { 'X_POS', 'Y_POS' },
+        baseStats = { 'Hp', 'Fp', 'Stm', 'Ep_Load', 'Ps', 'Mem' },
+        addStats = { 'Vgr', 'Mnd', 'End', 'Str', 'Dsc', 'Int', 'Fth', 'Arc' },
+    }
+    self.LocationOrigins = {
+        Round_Table = { 0, 0, 0 },
+        Leyndell = { 400, 400, 0 },
+        Limgrave = { 200, 200, 0 },
+        Caelid = { 10, 10, 0 },
+        Liurnia = { 100, 100, 0 }
+    }
+    self.NpcsInChunk = {
+        Round_Table = {
+            Gideon = { 523240000, 523240070, 523240079, 523240179 },
+            Corhyn = { 523510000, 523510030, 523510034, 523510050, 523510070, 523510079, 523510130, 523510170 },
+            Diallos = { 523140000, 523140020, 523140020, 523140079, 523140120, 523140179, 523140220 },
+            Roderika = { 523200079, 523200179, 523200279 }, --Roderika + Spirit Tuner
+            D = { 523190000, 523190010, 523190065, 523190066, 523190079, 523190110, 523190179 },
+            Hewg = {},
+            Fia = { 523220000, 523220066, 523220079, 523220166, 523220179, 523220266, 523220366 },
+            Nepheli = { 523340000, 523340014, 523340020, 523340079, 523340114, 523340120, 523340179, 523340214 },
+            Rogier = { 523250000, 523250014, 523250050, 523250066, 523250079, 523250114, 523250166, 523250214 },
+            Enia = {},
+            Ensha = { 523390000, 523390079 },
+            Maiden_Husk = { 500020079 },
+            Dung = { 523230000, 523230020, 523230033, 523230035, 523230079, 523230135, 523230179, 523230279 }
+        },
+        Limgrave = {
+            Melina     = { 21800000, 21801000, 21801034, 21803000, 21809000 },
+            Boc        = {},
+            S_Sellen   = { 523160000, 523160010, 523160010, 523160020, 523160020, 523160020 },
+            Blaidd     = { 20100000, 20101000, 20107500, 20108000, 20109000, 20109010, 20109020, 20109040, 20109064, 20109110, 20109120, 20109140, 20109210, 20109240, 20109310, 20109410 },
+            N_Merchant = {},
+            E_Merchant = {},
+            W_Merchant = {},
+            Yura       = { 523180000, 523180010, 523180020, 523180030, 523180050, 523180079, 523180110, 523180130, 523180210, 523180210, 523180210 },
+            Kenneth    = { 523210000, 523210010, 523210014, 523210110 },
+            Alexander  = {},
+            -- Enia = {},
+            Roderika   = { 523200079, 523200179, 523200279 }, --Roderika + Spirit Tuner
+            D          = { 523190000, 523190010, 523190065, 523190066, 523190079, 523190110, 523190179 },
+            Ranni      = { 20500000, 20500010, 20500020, 20500100, 20500122, 20500178, 20501000, 20501022, 20501100, 20501122, 20510000 },
+            Bernahl    = { 523260000, 523260010, 523260038 },
+            Rogier     = { 523250000, 523250014, 523250050, 523250066, 523250079, 523250114, 523250166, 523250214 },
+            Patches    = { 523090000, 523090010, 523090020, 523090030, 523090032, 523090038, 523090110, 523090132, 523090210, 523090310, 523090410, 533090000, 533090040, },
+            Nepheli    = { 523340000, 523340014, 523340020, 523340079, 523340114, 523340120, 523340179, 523340214 }
 
+        },
+        Caelid = {},
+    }
+    -- Additional setup code like finding player, location, etc.
+    return self
+end
 
-------------------------------------------------------------------------------------------------
 StateMachine = {}
 function StateMachine.new()
     local self = setmetatable({}, { _index = StateMachine })
@@ -121,13 +152,13 @@ function StateMachine.new()
         INITIAL = function()
             print("Starting System")
             print("Starting first call")
-            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData,1,3)
+            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData, 1, 1)
             if playerdata == nil then error("Player data returned nil") end
             local coords2D, baseStats, addStats, buildStats = table.unpack(playerdata)
             local coords3D = DATACOLLECTOR:GetPlayerPosition(false)
-            DATACOLLECTOR.playerIns = Player.new(coords2D,coords3D,baseStats,addStats,buildStats)
-            
-            
+            DATACOLLECTOR.playerIns = Player.new(coords2D, coords3D, baseStats, addStats, buildStats)
+
+
             local npcData = DATACOLLECTOR.TraverseNPCTable(DATACOLLECTOR.WorldChrMan);
 
 
@@ -136,7 +167,7 @@ function StateMachine.new()
         RUNNING = function()
             print("In Running Mode");
 
-            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData,1,2)
+            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData, 1, 2)
             if playerdata == nil then error("Player data returned nil") end
 
             self.next = self.actions["CLOSE"]
@@ -149,6 +180,25 @@ function StateMachine.new()
     return self
 end
 
+-- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
+local udpServer = Server.new(socket, '192.168.1.10', 4000, "192.168.1.10")
+
+local stateMachine = StateMachine.new()
+local DATACOLLECTOR = DataCollector.new()
+local timer = nil
+
+
+
+
+------------------------------------------------------------------------------------------------
+-- STATE MACHINE
+
+
+
+
+------------------------------------------------------------------------------------------------
+
+
 function StateMachine:executeState() self.actions[self.current]() end
 
 function StateMachine:changeState()
@@ -158,6 +208,7 @@ function StateMachine:changeState()
         print("Invalid State: ", newState)
     end
 end
+
 ------------------------------------------------------------------------------------------------
 --Data Collector Class
 
@@ -165,94 +216,9 @@ end
 
 
 ------------------------------------------------------------------------------------------------
-Player = {}
-function Player.new(coords2D,coords3D,baseStats,addStats,buildStats)
-    local self = setmetatable({}, {__index = Player})
-    self.coords2D = coords2D
-    self.coords3D = coords3D
-    self.baseStats = baseStats
-    self.addStats = addStats
-    self.buildStats = {}
-    return self
-end
 
-NPC = {}
-function NPC.new(id,name,address,anim,coords,dist)
-    local self = setmetatable({},{__index = NPC})
-    self.paramId = id
-    self.name = name
-    self.address = address
-    self.animationNum = anim
-    self.coords = coords
-    self.distToPlayer = dist
-    return self
-end
 
-DataCollector = {}
-function DataCollector.new()
-    local self = setmetatable({}, { __index = DataCollector })
-    self.WorldChrMan = (function()
-        local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
-        if addr then return addr + 24 + readInteger(addr + 19, true) end
-     end)()
-    self.playerIns = nil
-    self.npcsIns = {}
-    self.playerData = {
-        coords2D = { 'X_POS', 'Y_POS' },
-        baseStats = { 'Hp', 'Fp',   'Stm', 'Ep_Load', 'Ps',  'Mem' },
-        addStats = { 'Vgr','Mnd','End', 'Str','Dsc', 'Int', 'Fth', 'Arc' },
-    }
-    self.LocationOrigins = {
-        Round_Table = {0,0,0},
-        Leyndell = { 400, 400,0 },
-        Limgrave = { 200, 200, 0},
-        Caelid = { 10, 10, 0},
-        Liurnia = {100, 100, 0}
-    }
-    self.NpcsInChunk = {
-        Round_Table = {
-            Gideon = {523240000,523240070,523240079,523240179},
-            Corhyn = {523510000,523510030,523510034,523510050,523510070,523510079,523510130,523510170},
-            Diallos = {523140000,523140020,523140020,523140079,523140120,523140179,523140220},
-            Roderika = {523200079,523200179,523200279}, --Roderika + Spirit Tuner
-            D = {523190000,523190010,523190065,523190066,523190079,523190110,523190179},
-            Hewg = {},
-            Fia = {523220000,523220066,523220079,523220166,523220179,523220266,523220366},
-            Nepheli = {523340000,523340014,523340020,523340079,523340114,523340120,523340179,523340214},
-            Rogier = {523250000,523250014,523250050,523250066,523250079,523250114,523250166,523250214},
-            Enia = {},
-            Ensha = {523390000,523390079},
-            Maiden_Husk = {500020079},
-            Dung = {523230000,523230020,523230033,523230035,523230079,523230135,523230179,523230279}
-        },
-        Limgrave = {
-            Melina = {21800000, 21801000, 21801034, 21803000,21809000},
-            Boc = {},
-            S_Sellen ={523160000,523160010,523160010,523160020,523160020,523160020},
-            Blaidd = {20100000,20101000,20107500,20108000,20109000,20109010,20109020,20109040, 20109064, 20109110,20109120,20109140,20109210,20109240,20109310,20109410},
-            N_Merchant = {},
-            E_Merchant = {},
-            W_Merchant = {},
-            Yura = {523180000, 523180010,523180020,523180030,523180050,523180079,523180110,523180130,523180210,523180210,523180210},
-            Kenneth = {523210000,523210010,523210014,523210110},
-            Alexander = {},
-            -- Enia = {},
-            Roderika = {523200079,523200179,523200279}, --Roderika + Spirit Tuner
-            D = {523190000,523190010,523190065,523190066,523190079,523190110,523190179},
-            Ranni = {20500000,20500010,20500020,20500100,20500122,20500178,20501000,20501022,20501100,20501122,20510000},
-            Bernahl = {523260000,523260010,523260038},
-            Rogier = {523250000,523250014,523250050,523250066,523250079,523250114,523250166,523250214},
-            Patches  = {523090000,523090010,523090020,523090030,523090032,523090038,523090110,523090132,523090210,523090310,523090410,533090000,533090040,},
-            Nepheli = {523340000,523340014,523340020,523340079,523340114,523340120,523340179,523340214}
-
-        },
-        Caelid = {},
-    }
-    -- Additional setup code like finding player, location, etc.
-    return self
-end
-
--- 
+--
 function DataCollector.buildTablefromAddressList(list, start, limit)
     if limit < start then
         limit = start + 1
@@ -263,27 +229,28 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
     for k, v in ipairs(list) do
         if k > limit then
             print("Finished at", k, v)
-            break  -- Optionally stop after exceeding the limit
+            break -- Optionally stop after exceeding the limit
         end
-       local blankT = {}
-       DepthExecute(v, function(arg) 
+        local blankT = {}
+        DepthExecute(v, function(arg)
             local value = getAddressList().getMemoryRecordByDescription(arg)
             table.insert(blankT, value)
-
         end)
-       table.insert(retrieveTable, blankT)
+        table.insert(retrieveTable, blankT)
     end
-    
+
     return retrieveTable
 end
 
 function DepthExecute(table, callback)
     -- Base Case the table is empty exit recursion loop
     if not table then return false end
-    -- the value is a table get the values move them up 
-    for _,v in pairs(table) do
-        if type(v) == "table" then DepthExecute(v,callback)
-        else callback(v)
+    -- the value is a table get the values move them up
+    for _, v in pairs(table) do
+        if type(v) == "table" then
+            DepthExecute(v, callback)
+        else
+            callback(v)
         end
     end
 end
@@ -317,21 +284,21 @@ function DataCollector:GetCharacterCount(WorldChrMan)
 end
 
 function DataCollector.distanceBetween(pos1, pos2)
-    local px,py,pz = table.unpack(pos1)
-    local nx,ny,nz = table.unpack(pos2)
-    return math.sqrt((px-nx)*(px-nx)+(py-ny)*(py-ny)+(pz-nz)*(pz-nz))
+    local px, py, pz = table.unpack(pos1)
+    local nx, ny, nz = table.unpack(pos2)
+    return math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny) + (pz - nz) * (pz - nz))
 end
 
 function DataCollector:FindChunk()
     local minDistance = math.huge
     local targetKey = nil
-    for k,v in pairs(self.LocationOrigins) do
-        print(k,v);
-        if not self.playerIns.coords3D then 
+    for k, v in pairs(self.LocationOrigins) do
+        print(k, v);
+        if not self.playerIns.coords3D then
             print("Player instance or player coordinates are not found")
             break
         end
-        local dist = self.distanceBetween(self.playerIns.coords3D,v)
+        local dist = self.distanceBetween(self.playerIns.coords3D, v)
         if dist < minDistance then
             minDistance = dist
             targetKey = k
@@ -339,7 +306,6 @@ function DataCollector:FindChunk()
     end
     return targetKey
 end
-
 
 function DataCollector:TraverseNPCTable(WorldChrMan)
     local p = readQword(WorldChrMan)
@@ -354,9 +320,9 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local locationKey = self:FindChunk() --This can be stored in world data
     print("This is where the player is at: ", locationKey)
 
-    -- find possible npcs based on character location 
+    -- find possible npcs based on character location
     local npcs = nil
-    for k,v in pairs(NpcsInChunk) do
+    for k, v in pairs(NpcsInChunk) do
         if k == locationKey then
             npcs = v
             break
@@ -374,14 +340,14 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
             -- Read the parameter ID
             local paramId = readInteger(npcPtr + 0x60, true)
 
-            local foundNPC = DepthSearch(paramId,npcs)
+            local foundNPC = DepthSearch(paramId, npcs)
             if not foundNPC then break end
 
             -- Read animation or similar data
             local anim = readInteger(npcPtr + 0x40, true)
 
 
-            if  anim <= 0 then break end 
+            if anim <= 0 then break end
             -- Read NPC's position (x, y, z)
             local x = readFloat(npcPtr + 0x70)
             local y = readFloat(npcPtr + 0x74)
@@ -395,9 +361,10 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
             -- z = z or 0.0           -- Default to 0 if z is nil
 
 
-            local npc = NPC.new(paramId,foundNPC,22993, {x,y,z}, self.distanceBetween({x,y,z},DATACOLLECTOR.playerIns.coords3D))
+            local npc = NPC.new(paramId, foundNPC, 22993, { x, y, z },
+                self.distanceBetween({ x, y, z }, DATACOLLECTOR.playerIns.coords3D))
             table.insert(result, npc);
-            
+
             -- -- Add the NPC data to your result here
             -- table.insert(result,
             --     string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
@@ -407,3 +374,66 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     print(table.concat(result, ", "))
     return result
 end
+
+
+function startMonitoring()
+    --Create Server and StateMachine
+    if timer ~= nil then -- we already create the timer no need to make another one
+        print(" Timer was already created ")
+        return
+    end
+    print("creating Timer")
+    
+    -- Crate an instance of timer
+    timer = createTimer(getMainForm());
+    if not timer then
+        print("Failed to create timer!")
+    else
+        print("Timer created successfully!")
+    end
+    timer.Interval = 2000;
+    udpServer.running = true;
+    print("Inside start monitoring no error yet messing with the timer and server instance")
+    timer.OnTimer = function(sender)
+        local success, error = pcall(
+            function()
+                -- Listen for server call or input from the use
+                -- if stateMachine.next ~= stateMachine.current then
+                --     --Then there was a state change
+                --     stateMachine.current = stateMachine.next;
+                -- end
+                print("bout to do a big call")
+
+                -- call the current state methods
+                print(stateMachine.current)
+                local result = stateMachine.actions[stateMachine.current]();
+                
+                if result then print("The state machine return successfully on current state: " .. stateMachine.current) end
+                -- local data = JSON.encode(result);
+                -- --nil check? why
+                -- --udpServer.protocol:sendto(data, udpServer.targetip, udpServer.portNumber)
+                -- --Print a log
+                -- print("Successfully sent data to: ", udpServer.targetip, "  with a  state of: ",
+                --     StateMachine.currentState)
+            end)
+        print(success)
+        if not success then
+            print("Error occurred: ", error)
+            stopMonitoring()
+        end
+    end
+end
+
+function stopMonitoring()
+    --There is no timer to destroy
+    if timer == nil then return end
+    timer.destroy() --cleanup
+    timer = nil
+    local newState = "CLOSE";
+    stateMachine = nil
+    udpServer.protocol:close();
+    print("Closed program")
+end
+
+-- This is definately not the right numbers
+startMonitoring()
