@@ -18,7 +18,7 @@ local JSON = require("lunajson")
 -- This is definately not the right numbers
 local udpServer = Server.new(socket, '*', 4000, "local")
 local stateMachine = StateMachine.new()
-local dataCollector = DataCollector.new()
+local DATACOLLECTOR = DataCollector.new()
 local timer = nil
 
 function startMonitoring()
@@ -121,21 +121,29 @@ function StateMachine.new()
         INITIAL = function()
             print("Starting System")
             print("Starting first call")
-            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData,1,2)
+            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData,1,3)
             if playerdata == nil then error("Player data returned nil") end
             local coords2D, baseStats, addStats, buildStats = table.unpack(playerdata)
             local coords3D = DATACOLLECTOR:GetPlayerPosition(false)
-
-
             DATACOLLECTOR.playerIns = Player.new(coords2D,coords3D,baseStats,addStats,buildStats)
+            
+            
+            local npcData = DATACOLLECTOR.TraverseNPCTable(DATACOLLECTOR.WorldChrMan);
 
 
-
-
+            self.next = self.actions["RUNNING"];
         end, --fullread --After this change the state to Running on success
-        RUNNING,
+        RUNNING = function()
+            print("In Running Mode");
+
+            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData,1,2)
+            if playerdata == nil then error("Player data returned nil") end
+
+            self.next = self.actions["CLOSE"]
+        end,
         CLOSE = function()
             print("Closing Server")
+            stopMonitoring()
         end
     }
     return self
@@ -297,12 +305,6 @@ function DataCollector:GetPlayerPosition(asbytes)
     if not p then return end
     if asbytes then return readBytes(p + 0x70, 12, true) end
     return readFloat(p + 0x70), readFloat(p + 0x74), readFloat(p + 0x78)
-end
-
-
---NPC Functions
-function DataCollector:ReturnNearPOI()
-    return self:TraverseNPCTable(WorldChrMan)
 end
 
 function DataCollector:GetCharacterCount(WorldChrMan)

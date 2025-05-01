@@ -1,0 +1,54 @@
+body {
+    background-color: black;
+    color:white;
+    font-family: 'Courier New', Courier, monospace;
+    text-align: center;
+}
+
+li {
+    list-style: none
+}
+pre {
+    font-family: "Courier New", Courier, monospace;  /* Ensure monospace font */
+    white-space: pre-wrap; /* Allows wrapping of text */
+}
+
+
+.line-break{
+    width: 100%;
+    text-align: center; /* Optional: Aligns the + signs in the center */
+    white-space: nowrap; /* Prevents wrapping of the + signs */
+    overflow: hidden; /* Ensures no extra content spills out */
+    font-family: monospace; /* Optional: Uses a monospace font for a consistent look */
+}
+
+.carousel-wrapper{
+    display: flex;
+    justify-content: center; /* Center the carousel */
+    align-items: center;
+    overflow: hidden;        /* Hide anything outside the container */
+}
+.carousel {
+    display:flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 3rem;
+    margin-bottom: 2rem;
+}
+.card {
+    border-color: white;
+    border-style:solid;
+    border-radius: 8px;            /* Rounded corners */
+    text-align: center;            /* Center text */
+}
+.card > div {
+    margin: 10px;
+}
+/* Add a hover effect */
+.card:hover {
+    transform: scale(1.05);        /* Slightly enlarge the card on hover */
+}
+
+#Event-Log {
+
+}
