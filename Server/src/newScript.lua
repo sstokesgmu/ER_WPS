@@ -74,9 +74,12 @@ function DataCollector.new()
     self.playerIns = nil
     self.npcsIns = {}
     self.playerData = {
-        coords2D = { 'X_POS', 'Y_POS' },
-        baseStats = { 'Hp', 'Fp', 'Stm', 'Ep_Load', 'Ps', 'Mem' },
-        addStats = { 'Vgr', 'Mnd', 'End', 'Str', 'Dsc', 'Int', 'Fth', 'Arc' },
+        { 'X_POS', 'Y_POS' },
+        { 'Hp', 'Fp', 'Stm', 'Ep_Load', 'Ps', 'Mem' },
+        { 'Vgr', 'Mnd', 'End', 'Str', 'Dsc', 'Int', 'Fth', 'Arc' },
+        -- coords2D = { 'X_POS', 'Y_POS' },
+        -- baseStats = { 'Hp', 'Fp', 'Stm', 'Ep_Load', 'Ps', 'Mem' },
+        -- addStats = { 'Vgr', 'Mnd', 'End', 'Str', 'Dsc', 'Int', 'Fth', 'Arc' },
     }
     self.LocationOrigins = {
         Round_Table = { 0, 0, 0 },
@@ -129,8 +132,9 @@ function DataCollector.new()
 end
 
 StateMachine = {}
-function StateMachine.new()
-    local self = setmetatable({}, { _index = StateMachine })
+function StateMachine.new(datacollector)
+    local self = setmetatable({}, { __index = StateMachine })
+    self.collector = datacollector
     self.current = "INITIAL"
     self.next = nil
     --https://github.com/iskolbin/lpriorityqueue
@@ -145,35 +149,38 @@ function StateMachine.new()
     }
     --Actions based on each STATE
     self.actions = {
-        -- INITIAL = function()
-        --            print("Initializing system...")
-        --            -- Fetch initial game data, set up initial connections, etc.
-        --        end,
         INITIAL = function()
             print("Starting System")
             print("Starting first call")
-            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData, 1, 1)
+            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
             if playerdata == nil then error("Player data returned nil") end
+
+
             local coords2D, baseStats, addStats, buildStats = table.unpack(playerdata)
-            local coords3D = DATACOLLECTOR:GetPlayerPosition(false)
-            DATACOLLECTOR.playerIns = Player.new(coords2D, coords3D, baseStats, addStats, buildStats)
+            print(coords2D)
+            local coords3D = self.collector:GetPlayerPosition()
+            self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, addStats, buildStats)
 
 
-            local npcData = DATACOLLECTOR.TraverseNPCTable(DATACOLLECTOR.WorldChrMan);
 
+            if self.collector.playerIns then print("created a player instance", JSON.encode(self.collector.playerIns)) end 
 
-            self.next = self.actions["RUNNING"];
-        end, --fullread --After this change the state to Running on success
+            local npcData = self.collector.TraverseNPCTable(self.collector.WorldChrMan);
+
+            self.next = "RUNNING";
+            print("State machine ", self.next)
+        end,
         RUNNING = function()
             print("In Running Mode");
 
-            local playerdata = DATACOLLECTOR.buildTablefromAddressList(DATACOLLECTOR.playerData, 1, 2)
+            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
             if playerdata == nil then error("Player data returned nil") end
-
-            self.next = self.actions["CLOSE"]
+            self.next = "CLOSE"
         end,
         CLOSE = function()
             print("Closing Server")
+            self.current = nil
+            self.next = nil
             stopMonitoring()
         end
     }
@@ -183,8 +190,9 @@ end
 -- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
 local udpServer = Server.new(socket, '192.168.1.10', 4000, "192.168.1.10")
 
-local stateMachine = StateMachine.new()
+
 local DATACOLLECTOR = DataCollector.new()
+local stateMachine = StateMachine.new(DATACOLLECTOR)
 local timer = nil
 
 
@@ -201,13 +209,13 @@ local timer = nil
 
 function StateMachine:executeState() self.actions[self.current]() end
 
-function StateMachine:changeState()
-    if self.States[newState] then
-        self.currentState = newState
-    else
-        print("Invalid State: ", newState)
-    end
-end
+-- function StateMachine:changeState()
+--     if self.States[newState] then
+--         self.currentState = newState
+--     else
+--         print("Invalid State: ", newState)
+--     end
+-- end
 
 ------------------------------------------------------------------------------------------------
 --Data Collector Class
@@ -217,23 +225,27 @@ end
 
 ------------------------------------------------------------------------------------------------
 
-
---
 function DataCollector.buildTablefromAddressList(list, start, limit)
+    print("Fetching values from address table")
     if limit < start then
         limit = start + 1
     elseif limit > #list then
         limit = #list - 1
     end
+
+    
     local retrieveTable = {}
     for k, v in ipairs(list) do
+        print("The current key is: ", k, " and the current value is: ", v)
         if k > limit then
             print("Finished at", k, v)
             break -- Optionally stop after exceeding the limit
         end
         local blankT = {}
         DepthExecute(v, function(arg)
-            local value = getAddressList().getMemoryRecordByDescription(arg)
+            local value = getAddressList().getMemoryRecordByDescription(arg).Value
+            print(arg)
+            print(value)
             table.insert(blankT, value)
         end)
         table.insert(retrieveTable, blankT)
@@ -248,6 +260,7 @@ function DepthExecute(table, callback)
     -- the value is a table get the values move them up
     for _, v in pairs(table) do
         if type(v) == "table" then
+            print(v)
             DepthExecute(v, callback)
         else
             callback(v)
@@ -375,7 +388,6 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     return result
 end
 
-
 function startMonitoring()
     --Create Server and StateMachine
     if timer ~= nil then -- we already create the timer no need to make another one
@@ -383,7 +395,7 @@ function startMonitoring()
         return
     end
     print("creating Timer")
-    
+
     -- Crate an instance of timer
     timer = createTimer(getMainForm());
     if not timer then
@@ -397,26 +409,26 @@ function startMonitoring()
     timer.OnTimer = function(sender)
         local success, error = pcall(
             function()
-                -- Listen for server call or input from the use
-                -- if stateMachine.next ~= stateMachine.current then
-                --     --Then there was a state change
-                --     stateMachine.current = stateMachine.next;
-                -- end
-                print("bout to do a big call")
-
                 -- call the current state methods
-                print(stateMachine.current)
                 local result = stateMachine.actions[stateMachine.current]();
-                
-                if result then print("The state machine return successfully on current state: " .. stateMachine.current) end
+                if not timer then return end -- exit the loop when the State Machine is closing 
+
+                if result then print("The state machine return successfully on current state: " .. stateMachine.current)end
                 -- local data = JSON.encode(result);
                 -- --nil check? why
                 -- --udpServer.protocol:sendto(data, udpServer.targetip, udpServer.portNumber)
                 -- --Print a log
                 -- print("Successfully sent data to: ", udpServer.targetip, "  with a  state of: ",
                 --     StateMachine.currentState)
+                -- Listen for server call or input from the use
+                if stateMachine.next ~= nil then
+                    print("StateMachine does not equal null")
+
+                    --Then there was a state change
+
+                    stateMachine.current = stateMachine.next;
+                end
             end)
-        print(success)
         if not success then
             print("Error occurred: ", error)
             stopMonitoring()
@@ -427,12 +439,10 @@ end
 function stopMonitoring()
     --There is no timer to destroy
     if timer == nil then return end
+    print("Closed program")
+    -- return nil
     timer.destroy() --cleanup
     timer = nil
-    local newState = "CLOSE";
-    stateMachine = nil
-    udpServer.protocol:close();
-    print("Closed program")
 end
 
 -- This is definately not the right numbers
