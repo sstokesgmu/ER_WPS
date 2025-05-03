@@ -268,6 +268,24 @@ function DepthExecute(table, callback)
     end
 end
 
+function DepthSearch(target, table)
+    --Base case 1 : the table is empty, stop recursion and return false
+    if not table then return false end
+
+    --Base case 2: Search for the target => found return true
+    for k, v in pairs(table) do
+        if v == target then return true end
+        -- Recursive Case: v is a table we need to go deeper
+        if type(v) == "table" then
+            local found = DepthSearch(target, v) -- Jump into the nested table
+            --Base case 2: Found the target in the nested table
+            if found then
+                return k
+            end
+        end
+    end
+end
+
 function DataCollector:GetPlayerPosAddr()
     local pointer = readQword(self.WorldChrMan) -- Access self.WorldChrMan
     if not pointer then return end
@@ -297,11 +315,19 @@ function DataCollector:GetCharacterCount(WorldChrMan)
 end
 
 function DataCollector.distanceBetween(pos1, pos2)
-    local px, py, pz = table.unpack(pos1)
-    print(px, py)
-    local nx, ny, nz = table.unpack(pos2)
-    print(nx, ny)
-    return math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny))
+    if not (pos1 and pos2) then return error("One of the positions is missing") end
+    if (#pos1 + #pos2) == 6 then
+        print("Three D")
+        -- Dealing with a 3D system
+        local px, py, pz = table.unpack(pos1)
+        local ex, ey, ez = table.unpack(pos2)
+        return math.sqrt((px - ex) * (px - ex) + (py - ey) * (py - ey) + (pz - ez) * (pz - ez))
+    else
+        -- Dealing with a 2D system
+        local px, py = table.unpack(pos1)
+        local ex, ey = table.unpack(pos2)
+        return math.sqrt((px - ex) * (px - ex) + (py - ey) * (py - ey))
+    end
 end
 
 function DataCollector:FindChunk()
@@ -342,7 +368,7 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
 
     -- find possible npcs based on character location
     local npcs = nil
-    for k, v in pairs(NpcsInChunk) do
+    for k, v in pairs(self.NpcsInChunk) do
         if k == locationKey then
             npcs = v
             break
@@ -352,26 +378,26 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
 
     local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
-
-
+    print("current npc count ", count)
     for i = 1, count do
-        local npcPtr = readQword(begin + i * 8)
-        if npcPtr and npcPtr >= 65536 then
-            -- Read the parameter ID
-            local paramId = readInteger(npcPtr + 0x60, true)
+        print("I is: ", i)
+        local p = readQword(begin + i * 8)
+        if p and p >= 65536 then
+            -- -- Read the parameter ID
+            -- local paramId = readInteger(npcPtr + 0x60, true)
 
-            local foundNPC = DepthSearch(paramId, npcs)
-            if not foundNPC then break end
+            -- local foundNPC = DepthSearch(paramId, npcs)
+            -- if not foundNPC then goto continue  end
 
-            -- Read animation or similar data
-            local anim = readInteger(npcPtr + 0x40, true)
+            -- -- Read animation or similar data
+            -- local anim = readInteger(npcPtr + 0x40, true)
+            -- print("The anim is: ", anim)
 
-
-            if anim <= 0 then break end
-            -- Read NPC's position (x, y, z)
-            local x = readFloat(npcPtr + 0x70)
-            local y = readFloat(npcPtr + 0x74)
-            local z = readFloat(npcPtr + 0x78)
+            -- if anim <= 0 then goto continue end
+            -- -- Read NPC's position (x, y, z)
+            -- local x = readFloat(npcPtr + 0x70)
+            -- local y = readFloat(npcPtr + 0x74)
+            -- local z = readFloat(npcPtr + 0x78)
 
             -- Handle possible nil values by providing default values
             -- paramId = paramId or 0 -- Default to 0 if paramId is nil
@@ -381,17 +407,89 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
             -- z = z or 0.0           -- Default to 0 if z is nil
 
 
-            local npc = NPC.new(paramId, foundNPC, 22993, { x, y, z },
-                self.distanceBetween({ x, y, z }, DATACOLLECTOR.playerIns.coords3D))
-            table.insert(result, npc);
+            -- local npc = NPC.new(paramId, foundNPC, npcPtr,anim, {x, y, z },
+            --     self.distanceBetween(self:GetPlayerPosition(), {x,y,z}))
+            -- table.insert(result, npc);
+            -- -- -- Add the NPC data to your result here
+            -- -- table.insert(result,
+            -- --     string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
+            ::continue::
 
-            -- -- Add the NPC data to your result here
-            -- table.insert(result,
-            --     string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
+            -- local x = readInteger(p + 8)
+            -- print(x)
+
+            -- x = readSmallInteger(p + 0x74)
+            -- print(x)
+
+            -- x = readInteger(p + 0x60, true)
+            -- print(x)
+
+            -- x = readByte(p + 0x6C)
+            -- print(x)
+
+            -- p = readQword(p + 0x190)
+            -- print(x)
+            -- x = readQword(p)
+            -- print(x)
+            -- x = readQword(x + 0x138)
+            -- print(x)
+
+
+            -- x = readQword(p + 0x18)
+            -- print(x)
+
+            -- animationOffset = p + 8 + 0x74 + 0x60 + 0x6C + 0x190 + 0x138 + 0x18
+            -- animationData = readInteger(animationOffset + 0x40, true) -- Assuming animation data is at 0x40
+
+            -- x = readInteger(x + 0x40, true)
+            -- print("The animation is", x)
+            -- print("The animation is: ", animationData)
+
+
+            -- p=readQword(p+0x68)
+            -- print(x)
+            -- x=readFloat(p+0x70)
+            -- print(x)
+            -- local y=readFloat(p+0x74)
+            -- print(x)
+            -- local z=readFloat(p+0x78)
+            -- print(x)        end
+
+
+            -- Store initial reads before pointer change
+            local initialValue1 = readInteger(p + 8)
+            local initialValue2 = readSmallInteger(p + 0x74)
+            local initialValue3 = readInteger(p + 0x60, true)
+            local initialValue4 = readByte(p + 0x6C)
+            
+            print("Initial values:", initialValue1, initialValue2, initialValue3, initialValue4)
+
+            -- First pointer change
+            local newP = readQword(p + 0x190)  -- p now points to a new base address
+            if newP == 0 then 
+                print("Null pointer at p + 0x190")
+                goto continue 
+            end
+
+            -- Read from new base address
+            local nextPtr = readQword(newP)
+            if nextPtr == 0 then 
+                print("Null pointer at readQword(newP)")
+                goto continue 
+            end
+
+            -- Follow the chain
+            local animPtr = readQword(nextPtr + 0x138)
+            if animPtr == 0 then 
+                print("Null pointer at nextPtr + 0x138")
+                goto continue 
+            end
+
+            -- Read final animation data
+            local animationData = readInteger(animPtr + 0x40, true)
+            print("Found animation data:", animationData)
         end
     end
-
-    print(table.concat(result, ", "))
     return result
 end
 
