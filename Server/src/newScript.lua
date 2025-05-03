@@ -6,6 +6,8 @@
 local socket = require("socket")
 local JSON = require("lunajson")
 
+print(
+    "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 
 ------------------------------------------------------------------------------------------------
 -- Timer
@@ -42,13 +44,14 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
 end
 
 Player = {}
-function Player.new(coords2D, coords3D, baseStats, addStats, buildStats)
+function Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
     local self = setmetatable({}, { __index = Player })
     self.coords2D = coords2D
     self.coords3D = coords3D
     self.baseStats = baseStats
-    self.addStats = addStats
-    self.buildStats = {}
+    self.attributeStats = attributes
+    self.ResStats = resistances
+    self.armor = armor
     return self
 end
 
@@ -68,21 +71,27 @@ DataCollector = {}
 function DataCollector.new()
     local self = setmetatable({}, { __index = DataCollector })
     self.WorldChrMan = (function()
-        local addr = AOBScanModuleUnique("eldenring.exe", "0f 10 00 0F 11 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D", "+X")
-        if addr then return addr + 24 + readInteger(addr + 19, true) end
+        print("immediately invoked function")
+        local addr = AOBScanModuleUnique("eldenring.exe", "0F 10 00 0F 11 44 24 70 0F 10 48 10 0F 11 4D 80 48 83 3D",
+            "+X")
+        if addr then
+            print("Found address")
+            return addr + 24 + readInteger(addr + 19, true)
+        else
+            print("Address is null")
+        end
     end)()
     self.playerIns = nil
     self.npcsIns = {}
     self.playerData = {
-        { 'X_POS', 'Y_POS' },
-        { 'Hp', 'Fp', 'Stm', 'Ep_Load', 'Ps', 'Mem' },
-        { 'Vgr', 'Mnd', 'End', 'Str', 'Dsc', 'Int', 'Fth', 'Arc' },
-        -- coords2D = { 'X_POS', 'Y_POS' },
-        -- baseStats = { 'Hp', 'Fp', 'Stm', 'Ep_Load', 'Ps', 'Mem' },
-        -- addStats = { 'Vgr', 'Mnd', 'End', 'Str', 'Dsc', 'Int', 'Fth', 'Arc' },
+        { 'X_POS',        'Y_POS' },
+        { 'HP_Fetch',     'MP_Fetch',    'STM', },
+        { 'VGR',          'MND',         'END',            'STR',           'DEX', 'INT_Fetch', 'FTH', 'ARC' },
+        { 'IMMUNITY',     'ROBUSTNESS',  'VITALITY',       'FOCUS' },
+        { 'Helmet_Fetch', 'Armor_Fetch', 'Gauntlet_Fetch', 'Leggings_Fetch' }
     }
     self.LocationOrigins = {
-        Round_Table = { 0, 0, 0 },
+        Round_Table = { -21, -305, 0 },
         Leyndell = { 400, 400, 0 },
         Limgrave = { 200, 200, 0 },
         Caelid = { 10, 10, 0 },
@@ -150,23 +159,23 @@ function StateMachine.new(datacollector)
     --Actions based on each STATE
     self.actions = {
         INITIAL = function()
-            print("Starting System")
-            print("Starting first call")
-            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
+            print("Starting System ...")
+            print("Starting first call ...")
+            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 5)
             if playerdata == nil then error("Player data returned nil") end
-
-
-            local coords2D, baseStats, addStats, buildStats = table.unpack(playerdata)
+            local coords2D, baseStats, attributes, resistances, armor = table.unpack(playerdata)
             print(coords2D)
             local coords3D = self.collector:GetPlayerPosition()
-            self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, addStats, buildStats)
+
+            self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
+
+            if self.collector.playerIns then print("created a player instance", JSON.encode(self.collector.playerIns)) end
+
+            print("WorldChrMan is: ", self.collector.WorldChrMan)
+            local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
 
 
-
-            if self.collector.playerIns then print("created a player instance", JSON.encode(self.collector.playerIns)) end 
-
-            local npcData = self.collector.TraverseNPCTable(self.collector.WorldChrMan);
-
+            if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
             self.next = "RUNNING";
             print("State machine ", self.next)
         end,
@@ -189,15 +198,9 @@ end
 
 -- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
 local udpServer = Server.new(socket, '192.168.1.10', 4000, "192.168.1.10")
-
-
 local DATACOLLECTOR = DataCollector.new()
 local stateMachine = StateMachine.new(DATACOLLECTOR)
 local timer = nil
-
-
-
-
 ------------------------------------------------------------------------------------------------
 -- STATE MACHINE
 
@@ -233,10 +236,9 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
         limit = #list - 1
     end
 
-    
+
     local retrieveTable = {}
     for k, v in ipairs(list) do
-        print("The current key is: ", k, " and the current value is: ", v)
         if k > limit then
             print("Finished at", k, v)
             break -- Optionally stop after exceeding the limit
@@ -244,8 +246,6 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
         local blankT = {}
         DepthExecute(v, function(arg)
             local value = getAddressList().getMemoryRecordByDescription(arg).Value
-            print(arg)
-            print(value)
             table.insert(blankT, value)
         end)
         table.insert(retrieveTable, blankT)
@@ -284,7 +284,7 @@ function DataCollector:GetPlayerPosition(asbytes)
     local p = self:GetPlayerPosAddr()
     if not p then return end
     if asbytes then return readBytes(p + 0x70, 12, true) end
-    return readFloat(p + 0x70), readFloat(p + 0x74), readFloat(p + 0x78)
+    return { readFloat(p + 0x70), readFloat(p + 0x74), readFloat(p + 0x78) }
 end
 
 function DataCollector:GetCharacterCount(WorldChrMan)
@@ -298,8 +298,10 @@ end
 
 function DataCollector.distanceBetween(pos1, pos2)
     local px, py, pz = table.unpack(pos1)
+    print(px, py)
     local nx, ny, nz = table.unpack(pos2)
-    return math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny) + (pz - nz) * (pz - nz))
+    print(nx, ny)
+    return math.sqrt((px - nx) * (px - nx) + (py - ny) * (py - ny))
 end
 
 function DataCollector:FindChunk()
@@ -311,7 +313,7 @@ function DataCollector:FindChunk()
             print("Player instance or player coordinates are not found")
             break
         end
-        local dist = self.distanceBetween(self.playerIns.coords3D, v)
+        local dist = self.distanceBetween(self.playerIns.coords2D, v)
         if dist < minDistance then
             minDistance = dist
             targetKey = k
@@ -321,15 +323,20 @@ function DataCollector:FindChunk()
 end
 
 function DataCollector:TraverseNPCTable(WorldChrMan)
+    print("Received WorldChrMan:", WorldChrMan)
+    print("Self WorldChrMan:", self.WorldChrMan)
+    print("Are they equal?", WorldChrMan == self.WorldChrMan)
+    if not WorldChrMan then print("WorldChrMan is null") end
     local p = readQword(WorldChrMan)
     if not p then return end
 
     local begin = readQword(p + 0x1F1B8)
     if not begin then return end
 
-    local px, py, pz = self:GetPlayerPosition()
+    local px, py, pz = table.unpack(self.playerIns.coords3D)
     if not px or not py or not pz then return end
 
+    print("Find the player Chunk")
     local locationKey = self:FindChunk() --This can be stored in world data
     print("This is where the player is at: ", locationKey)
 
@@ -411,9 +418,9 @@ function startMonitoring()
             function()
                 -- call the current state methods
                 local result = stateMachine.actions[stateMachine.current]();
-                if not timer then return end -- exit the loop when the State Machine is closing 
+                if not timer then return end -- exit the loop when the State Machine is closing
 
-                if result then print("The state machine return successfully on current state: " .. stateMachine.current)end
+                if result then print("The state machine return successfully on current state: " .. stateMachine.current) end
                 -- local data = JSON.encode(result);
                 -- --nil check? why
                 -- --udpServer.protocol:sendto(data, udpServer.targetip, udpServer.portNumber)
@@ -443,6 +450,8 @@ function stopMonitoring()
     -- return nil
     timer.destroy() --cleanup
     timer = nil
+    print(
+        "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 end
 
 -- This is definately not the right numbers
