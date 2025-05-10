@@ -379,115 +379,33 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
     print("current npc count ", count)
-    for i = 1, count do
+    for i = 0, count do
         print("I is: ", i)
         local p = readQword(begin + i * 8)
         if p and p >= 65536 then
-            -- -- Read the parameter ID
-            -- local paramId = readInteger(npcPtr + 0x60, true)
+            local x=readInteger(p+8)
+            print("Data at value: ", x)
+            x=readSmallInteger(p+0x74)
+            print("Data at value: ", x)
+            x=readInteger(p+0x60, true)
+            print("Data at value: ", x)
+            x=readByte(p+0x6C)
+            print("Data at value: ", x)
+            p=readQword(p+0x190)
+            print("Data at value: ", p)
+            x=readQword(p)
+            print("Data at value: ", x)
+            x=readQword(x+0x138)
+            print("Data at value: ", x)
+            x=readQword(p+0x18)
+            print("Data at value: ", x)
+            x=readInteger(x+0x40,true)
+            print("Data at value: ", x)
 
-            -- local foundNPC = DepthSearch(paramId, npcs)
-            -- if not foundNPC then goto continue  end
-
-            -- -- Read animation or similar data
-            -- local anim = readInteger(npcPtr + 0x40, true)
-            -- print("The anim is: ", anim)
-
-            -- if anim <= 0 then goto continue end
-            -- -- Read NPC's position (x, y, z)
-            -- local x = readFloat(npcPtr + 0x70)
-            -- local y = readFloat(npcPtr + 0x74)
-            -- local z = readFloat(npcPtr + 0x78)
-
-            -- Handle possible nil values by providing default values
-            -- paramId = paramId or 0 -- Default to 0 if paramId is nil
-            -- anim = anim or 0       -- Default to 0 if anim is nil
-            -- x = x or 0.0           -- Default to 0 if x is nil
-            -- y = y or 0.0           -- Default to 0 if y is nil
-            -- z = z or 0.0           -- Default to 0 if z is nil
-
-
-            -- local npc = NPC.new(paramId, foundNPC, npcPtr,anim, {x, y, z },
-            --     self.distanceBetween(self:GetPlayerPosition(), {x,y,z}))
-            -- table.insert(result, npc);
-            -- -- -- Add the NPC data to your result here
-            -- -- table.insert(result,
-            -- --     string.format("ParamId: %d, Anim: %d, Position: (X: %.2f, Y: %.2f, Z: %.2f)", paramId, anim, x, y, z))
-            ::continue::
-
-            -- local x = readInteger(p + 8)
-            -- print(x)
-
-            -- x = readSmallInteger(p + 0x74)
-            -- print(x)
-
-            -- x = readInteger(p + 0x60, true)
-            -- print(x)
-
-            -- x = readByte(p + 0x6C)
-            -- print(x)
-
-            -- p = readQword(p + 0x190)
-            -- print(x)
-            -- x = readQword(p)
-            -- print(x)
-            -- x = readQword(x + 0x138)
-            -- print(x)
-
-
-            -- x = readQword(p + 0x18)
-            -- print(x)
-
-            -- animationOffset = p + 8 + 0x74 + 0x60 + 0x6C + 0x190 + 0x138 + 0x18
-            -- animationData = readInteger(animationOffset + 0x40, true) -- Assuming animation data is at 0x40
-
-            -- x = readInteger(x + 0x40, true)
-            -- print("The animation is", x)
-            -- print("The animation is: ", animationData)
-
-
-            -- p=readQword(p+0x68)
-            -- print(x)
-            -- x=readFloat(p+0x70)
-            -- print(x)
-            -- local y=readFloat(p+0x74)
-            -- print(x)
-            -- local z=readFloat(p+0x78)
-            -- print(x)        end
-
-
-            -- Store initial reads before pointer change
-            local initialValue1 = readInteger(p + 8)
-            local initialValue2 = readSmallInteger(p + 0x74)
-            local initialValue3 = readInteger(p + 0x60, true)
-            local initialValue4 = readByte(p + 0x6C)
-            
-            print("Initial values:", initialValue1, initialValue2, initialValue3, initialValue4)
-
-            -- First pointer change
-            local newP = readQword(p + 0x190)  -- p now points to a new base address
-            if newP == 0 then 
-                print("Null pointer at p + 0x190")
-                goto continue 
-            end
-
-            -- Read from new base address
-            local nextPtr = readQword(newP)
-            if nextPtr == 0 then 
-                print("Null pointer at readQword(newP)")
-                goto continue 
-            end
-
-            -- Follow the chain
-            local animPtr = readQword(nextPtr + 0x138)
-            if animPtr == 0 then 
-                print("Null pointer at nextPtr + 0x138")
-                goto continue 
-            end
-
-            -- Read final animation data
-            local animationData = readInteger(animPtr + 0x40, true)
-            print("Found animation data:", animationData)
+            p=readQword(p+0x68)
+            print("Data at value: ", p)
+            x=readFloat(p+0x70)
+            print("Data at value: ", x)
         end
     end
     return result
