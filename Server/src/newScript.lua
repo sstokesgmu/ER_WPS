@@ -379,28 +379,23 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
     print("current npc count ", count)
-    for i = 0, count do
+    for i = 0, count-1 do
         print("I is: ", i)
         local p = readQword(begin + i * 8)
         if p and p >= 65536 then
             local x=readInteger(p+8)
-            print("Data at value: ", x)
             x=readSmallInteger(p+0x74)
-            print("Data at value: ", x)
-            x=readInteger(p+0x60, true)
-            print("Data at value: ", x)
-            x=readByte(p+0x6C)
-            print("Data at value: ", x)
-            p=readQword(p+0x190)
-            print("Data at value: ", p)
-            x=readQword(p)
-            print("Data at value: ", x)
-            x=readQword(x+0x138)
-            print("Data at value: ", x)
-            x=readQword(p+0x18)
-            print("Data at value: ", x)
-            x=readInteger(x+0x40,true)
-            print("Data at value: ", x)
+            x=readInteger(p+0x60, true) --Param ID
+            print("The Param ID is", x)
+            x=readByte(p+0x6C) --108
+            p=readQword(p+0x190) -- 400 and changing the address of p
+            -- p = readQword(p+0x1FC)
+            -- print("Data at value: ", p) -- p = readQword(p+0x1FC)
+            x=readQword(p) -- value at p -- include this
+            x=readQword(x+0x138) -- 312
+            x=readQword(p+0x18) -- 24
+            x=readInteger(x+0x40,true) -- Animation id --64 --x = (p+0x190)
+            print("Animation ID is", x)
 
             p=readQword(p+0x68)
             print("Data at value: ", p)
