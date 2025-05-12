@@ -37,6 +37,7 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
         local udp = socket.udp()
         udp:settimeout(1) -- Wait for async operations
         udp:setsockname(serverAddress, port)
+        udp:setpeername(targetAddress,4001)
         local ip, portNumber = udp:getsockname()
         return udp, ip, portNumber
     end)()
@@ -141,9 +142,10 @@ function DataCollector.new()
 end
 
 StateMachine = {}
-function StateMachine.new(datacollector)
+function StateMachine.new(datacollector, server)
     local self = setmetatable({}, { __index = StateMachine })
     self.collector = datacollector
+    self.server = server
     self.current = "INITIAL"
     self.next = nil
     --https://github.com/iskolbin/lpriorityqueue
@@ -169,13 +171,20 @@ function StateMachine.new(datacollector)
 
             self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
 
-            if self.collector.playerIns then print("created a player instance", JSON.encode(self.collector.playerIns)) end
+         
 
             print("WorldChrMan is: ", self.collector.WorldChrMan)
             local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
 
 
-            if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
+           -- if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
+
+            local playerData = JSON.encode(self.collector.playerIns)
+            local npcData = JSON.encode(npcData)
+
+            -- Send to the serverAddress
+            server.protocol:send(playerData)
+            server.protocol:send(npcData)
             self.next = "RUNNING";
             print("State machine ", self.next)
         end,
@@ -197,9 +206,9 @@ function StateMachine.new(datacollector)
 end
 
 -- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
-local udpServer = Server.new(socket, '192.168.1.10', 4000, "192.168.1.10")
+local udpServer = Server.new(socket, "127.0.0.1", 4000, "127.0.0.1")
 local DATACOLLECTOR = DataCollector.new()
-local stateMachine = StateMachine.new(DATACOLLECTOR)
+local stateMachine = StateMachine.new(DATACOLLECTOR,udpServer)
 local timer = nil
 ------------------------------------------------------------------------------------------------
 -- STATE MACHINE
@@ -386,6 +395,7 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
             local x=readInteger(p+8)
             x=readSmallInteger(p+0x74)
             x=readInteger(p+0x60, true) --Param ID
+            local id = x;
             print("The Param ID is", x)
             x=readByte(p+0x6C) --108
             p=readQword(p+0x190) -- 400 and changing the address of p
@@ -396,11 +406,25 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
             x=readQword(p+0x18) -- 24
             x=readInteger(x+0x40,true) -- Animation id --64 --x = (p+0x190)
             print("Animation ID is", x)
+            if x < 1 then goto continue end
+            local animID = x;
 
             p=readQword(p+0x68)
             print("Data at value: ", p)
             x=readFloat(p+0x70)
             print("Data at value: ", x)
+            print(x)
+            local y=readFloat(p+0x74)
+            print(y)
+            local z=readFloat(p+0x78)
+            print(z) 
+
+            local name = DepthSearch(id, npcs)
+            if not name then goto continue end
+
+            local npc = NPC.new(id, name, 111, animID, {x,y,z}, self.distanceBetween(DATACOLLECTOR.playerIns.coords3D,{x,y,z}))
+            table.insert(result, npc)
+            ::continue::
         end
     end
     return result

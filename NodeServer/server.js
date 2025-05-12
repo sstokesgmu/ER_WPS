@@ -11,12 +11,12 @@ let playerLoaded = false;
 //Network security
 udpServer.on("message", (msg, rinfo) => {
   console.log(`Recieved data: ${msg}`);
-
   try {
     // Parse the string into an object
     const obj = JSON.parse(msg);
     console.log(typeof obj); // Should show 'object'
-    console.log(obj); // Log the parsed object to verify it's correctly formatted
+    console.log('Recieved message from'); // Log the parsed object to verify it's correctly formatted
+    console.log(obj)
 
     //When the player loads the we find the origin again loads => teleport, die, start game
   } catch (e) {
@@ -44,4 +44,4 @@ udpServer.on("close", () => {
 //   console.log("WebSocket connection is closed");
 // });
 
-udpServer.bind(4000);
+udpServer.bind(4001);
