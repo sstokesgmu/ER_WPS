@@ -15,36 +15,45 @@ class Zone {
     return [this.x, this.y];
   }
 }
-//Player Npcs
-class Entity {
-  constructor(location) {
-    this.location = location;
-  }
-}
+//Player Npcs Locations
+//Roundtable Hold is not considered a map location more of a safe zone
+ const LOCATIONS = {  
+  regionURL: `https://eldenring.fanapis.com/api/locations?region:`
+ }
+ 
 
-class Player extends Entity {
-  constructor(location) {
-    super();
-  }
-}
 
-class NPC extends Entity {
-  constructor() {}
-}
-
-export const Origins = new Map([
-  ["Radagon", new Zone("Leyndell", 400, 400)],
-  ["Godrick", new Zone("Limgrave", 200, 200)],
-  ["StarRadan", new Zone("Caelid", 10, 10)],
-]);
+//fetch request 
 
 //Factory (Singleton) - Create structure to parse data
-class Factory {
+export class Factory {
   output = {};
-  constructor(firstPass, json) {
-    this.firstPass = firstPass;
-    this.json = json;
+  nativeObj = {};
+
+  constructor(){}
+
+  Desturct(obj)
+  {
+    this.nativeObj = obj 
+    let {player, location, npcs} = obj
+  
+  
   }
+  
+  // -----------------------------------------------------------------------------------------------------------------------------------------------------------
+  // Right now I pass a set of URLS necessary for the player and the npcs 
+  // -----------------------------------------------------------------------------------------------------------------------------------------------------------
+  async FetchData(url, ids)
+  {
+
+
+  }
+
+  Rebuild(obj)
+  {
+
+  }
+
 
   /*
     3 layer deep object - shit

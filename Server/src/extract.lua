@@ -44,6 +44,19 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
     return self
 end
 
+Packet = {
+    player=nil,
+    location=nil,
+    npcs=nil,
+}
+function Packet.new(player, location, npcs)
+    local self = setmetatable({}, {__index = Packet})
+    self.player=player
+    self.location=location
+    self.npcs=npcs
+    return self
+end
+
 Player = {}
 function Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
     local self = setmetatable({}, { __index = Player })
@@ -84,6 +97,7 @@ function DataCollector.new()
     end)()
     self.playerIns = nil
     self.npcsIns = {}
+    self.currentChunk = ""
     self.playerData = {
         { 'X_POS',        'Y_POS' },
         { 'HP_Fetch',     'MP_Fetch',    'STM', },
@@ -93,10 +107,10 @@ function DataCollector.new()
     }
     self.LocationOrigins = {
         Round_Table = { -21, -305, 0 },
-        Leyndell = { 400, 400, 0 },
-        Limgrave = { 200, 200, 0 },
-        Caelid = { 10, 10, 0 },
-        Liurnia = { 100, 100, 0 }
+        -- Leyndell = { 400, 400, 0 },
+        Limgrave = { 74, 345, 0 },
+        Caelid = { 91, 17, 0 },
+        Liurnia = { 431, 97, 0 }
     }
     self.NpcsInChunk = {
         Round_Table = {
@@ -165,34 +179,37 @@ function StateMachine.new(datacollector, server)
             print("Starting first call ...")
             local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 5)
             if playerdata == nil then error("Player data returned nil") end
+
             local coords2D, baseStats, attributes, resistances, armor = table.unpack(playerdata)
-            print(coords2D)
             local coords3D = self.collector:GetPlayerPosition()
 
             self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
-
-         
-
-            print("WorldChrMan is: ", self.collector.WorldChrMan)
+            self.collector:FindChunk()
             local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
-
-
            -- if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
-
-            local playerData = JSON.encode(self.collector.playerIns)
-            local npcData = JSON.encode(npcData)
+            -- local playerData = JSON.encode(self.collector.playerIns)
+            -- local npcData = JSON.encode(npcData)
 
             -- Send to the serverAddress
-            server.protocol:send(playerData)
-            server.protocol:send(npcData)
+
+            local result = MergeTables(
+                (function(...)
+                    return Packet.new(...)
+                end),
+                self.collector.playerIns, self.collector.currentChunk, npcData
+            )
+            printTable(result,1)
+
+
+            server.protocol:send(JSON.encode(result))
             self.next = "RUNNING";
             print("State machine ", self.next)
         end,
         RUNNING = function()
             print("In Running Mode");
 
-            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
-            if playerdata == nil then error("Player data returned nil") end
+            -- local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
+            -- if playerdata == nil then error("Player data returned nil") end
             self.next = "CLOSE"
         end,
         CLOSE = function()
@@ -244,8 +261,6 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
     elseif limit > #list then
         limit = #list - 1
     end
-
-
     local retrieveTable = {}
     for k, v in ipairs(list) do
         if k > limit then
@@ -262,6 +277,8 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
 
     return retrieveTable
 end
+
+
 
 function DepthExecute(table, callback)
     -- Base Case the table is empty exit recursion loop
@@ -294,6 +311,44 @@ function DepthSearch(target, table)
         end
     end
 end
+
+function MergeTables(dst, ...)
+    local n = select('#', ...)
+    print(type(dst))
+    print("Number of args: ", n)
+    if type(dst) == "function" then
+        return dst(...)
+    end
+    if not type(dst) == "table" then dst = {} end
+    for i = 1, n do
+        local data = select(i, ...)
+        print("Type of data at index ", i , " is of type " , type(data))
+        table.insert(dst, data)
+    end
+    return dst
+end
+
+function printTable(tbl, indent)
+    -- Set a default indentation level if not provided
+    indent = indent or 0
+    
+    -- Iterate over each key-value pair in the table
+    for key, value in pairs(tbl) do
+        -- Indentation for visual hierarchy in nested tables
+        local indentStr = string.rep("  ", indent)
+        
+        if type(value) == "table" then
+            -- If the value is a table, print the key and recursively call printTable for the nested table
+            print(indentStr .. key .. ": {")
+            printTable(value, indent + 1)  -- Recursively print nested tables with increased indentation
+            print(indentStr .. "}")         -- Close the nested table
+        else
+            -- If it's not a table, print the key and value
+            print(indentStr .. key .. ": " .. tostring(value))
+        end
+    end
+end
+
 
 function DataCollector:GetPlayerPosAddr()
     local pointer = readQword(self.WorldChrMan) -- Access self.WorldChrMan
@@ -344,7 +399,7 @@ function DataCollector:FindChunk()
     local targetKey = nil
     for k, v in pairs(self.LocationOrigins) do
         print(k, v);
-        if not self.playerIns.coords3D then
+        if not self.playerIns.coords2D then
             print("Player instance or player coordinates are not found")
             break
         end
@@ -354,7 +409,7 @@ function DataCollector:FindChunk()
             targetKey = k
         end
     end
-    return targetKey
+    self.currentChunk = targetKey
 end
 
 function DataCollector:TraverseNPCTable(WorldChrMan)
@@ -371,19 +426,21 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local px, py, pz = table.unpack(self.playerIns.coords3D)
     if not px or not py or not pz then return end
 
-    print("Find the player Chunk")
-    local locationKey = self:FindChunk() --This can be stored in world data
-    print("This is where the player is at: ", locationKey)
+    
+    if not self.currentChunk then error("The current area is not defined") return end 
+
+    local currentChunk = self.currentChunk
+    print("This is where the player is at: ", currentChunk)
 
     -- find possible npcs based on character location
     local npcs = nil
     for k, v in pairs(self.NpcsInChunk) do
-        if k == locationKey then
+        if k == currentChunk then
             npcs = v
             break
         end
     end
-    if not npcs then return print("There are no npcs at this chunk", locationKey) end
+    if not npcs then return print("There are no npcs at this chunk", currentChunk) end
 
     local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
