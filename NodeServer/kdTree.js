@@ -1,74 +1,99 @@
-//For KDTree we need a couple of things
-//Nodes, A recursive functions, we need a way to way to insert new nodes into
-
 class Node {
-  constructor(point) {
-    this.point = point;
-    this.left = null;
-    this.right = null;
+  constructor(point, depth) {
+    (this.point = point), this.left, this.right, this.splitPlane;
   }
-
-  print() {
-    print(`Value ${this.point}, left: ${this.left} and right: ${this.right}`);
-  }
+  //? When I start to assign left and right do I need to do a type check
 }
-
 class KDTree {
   constructor(k = 2, arr = null) {
     if (typeof k != "number") {
-      console.warn("You sent a value that is not of type number for the key");
-      this.k = 2;
-    } else this.k = k;
-
+      console.warn("You sent a vlaue that is not of type nuumber for the key");
+      this.k = arr[0].length;
+    } else {
+      if (k < 2) k = arr[0].length;
+      this.k = k;
+    }
     if (arr == null) throw Error("Array is null");
-    arr.sort((a, b) => a[0] - b[0]);
+    console.log("Building Tree ...");
+    this.root = this.BuildTree(arr, 0);
+    this.treeDepth = 0;
+  }
+  PrintRoot() {
+    return console.log(
+      `This is the root: ${this.root} and this is the depth level: ${this.treeDepth}`,
+    );
+  }
+  BuildTree(array, depth) {
+    //? What is the base case of thi
+    //
+    if (array.length <= 0) return null;
+    const splittingAxis = depth % this.k;
+    //console.log(`Axis:${splittingAxis}`);
+    //* Ascending Numeric Sort
+    array.sort((a, b) => a[splittingAxis] - b[splittingAxis]);
+    const index = Math.floor(array.length / 2);
+    const medianAtAxis = array[index];
+    //* On the first interation this would be the
+    const node = new Node(medianAtAxis, splittingAxis);
+    node.left = this.BuildTree(array.slice(0, index), depth + 1);
+    node.right = this.BuildTree(array.slice(index + 1), depth + 1);
+    this.treeDepth = depth; //? Do we need the tree depth;
+    return node;
+  }
+  NearestToTarget(target, currentNode = this.root, depth = 0) {
+    //Find the closest leaf node based through comparing axes
+    let obj = {
+      closestPoint: null,
+      minDistance: Infinity,
+    };
+    console.log("Finding the nearest node to target ...");
+    console.log(currentNode);
+    //* Short cut distance check on current node
+    //? How do know if the current node is the leaf : ANSWER they have no children nodes (left and right = null)
 
-    console.log("Choosing Median value");
-    this.root = this.buildTree(arr, 0);
-    this.depth = 0;
-  }
-  printRoot() {
-    return console.log(this.root);
-  }
-  //Recursive method to creare KDTree
+    if (currentNode.left == null && currentNode.right == null) {
+      return {
+        closestPoint: currentNode,
+        minDistance: this.DistanceTo(target, currentNode.point),
+      };
+    }
 
-  // Recursive method to create KDTree
-  buildTree(arr, depth) {
-    // Base case: if the array is empty, return null
-    if (arr.length === 0) return null;
-    // Find the axis to split on (using depth % k to alternate between axes)
-    const axis = depth % this.k;
-    // Sort points based on the current axis
-    arr.sort((a, b) => a[axis] - b[axis]);
-    console.log(arr);
-    // Find the median point (this will be the root node at this level)
-    const medianIndex = Math.floor(arr.length / 2);
-    const medianPoint = arr[medianIndex];
-    // Create a new node for the median point
-    const node = new Node(medianPoint);
-    // Recursively build the left and right subtrees
-    // Left subtree contains all points before the median
-    node.left = this.buildTree(arr.slice(0, medianIndex), depth + 1);
-    // Right subtree contains all points after the median
-    node.right = this.buildTree(arr.slice(medianIndex + 1), depth + 1);
-    this.depth = depth;
-    return node; // this node still refers to the root
+    const splittingAxis = depth % this.k;
+    if (
+      target[splittingAxis] >= currentNode.point[splittingAxis] &&
+      currentNode.right != null
+    ) {
+      obj.minDistance = this.NearestToTarget(
+        target,
+        currentNode.right,
+        depth + 1,
+      );
+    } else if (currentNode.left != null) {
+      obj.minDistance = this.NearestToTarget(
+        target,
+        currentNode.left,
+        depth + 1,
+      );
+    }
+
+    if (this.DistanceTo(target, currentNode) < obj.minDistance) {
+      obj.minDistance = this.NearestToTarget(target, currentNode, depth + 1);
+    }
+
+    return obj;
   }
-  //Find the nearest neighbor to points
-  search(point, depth) {
-    //point is null depth = 0
-    //recursive case
+  DistanceTo(point1, point2) {
+    //! Assuming this is an array
+    console.log("Calculating distance between target and point...");
+    const length = point1.length;
+    let cumulative = 0;
+    for (let i = 0; i < length; i++) {
+      let value = (point2[i] - point1[i]) ** 2;
+      cumulative += value;
+    }
+    return Math.sqrt(cumulative);
   }
 }
-// const points = [
-//   [3, 6],
-//   [17, 15],
-//   [13, 15],
-//   [6, 12],
-//   [9, 1],
-//   [2, 7],
-//   [10, 19],
-// ];
 
 let limgrave = [
   [73.8, 347.3],
@@ -107,8 +132,7 @@ let Liurinia = [
 ];
 
 const points = [...Calied, ...Liurinia, ...limgrave];
-
-const tree = new KDTree(null, points); // Create an instance of KTree
-tree.printRoot();
-// points.forEach((point) => tree.insert(point));
-// tree.print();
+const tree = new KDTree(null, points);
+tree.PrintRoot();
+let a = tree.NearestToTarget([122, -85], tree.root);
+console.log(JSON.stringify(a));
