@@ -1,6 +1,7 @@
+
 class Node {
   constructor(point, depth) {
-    (this.point = point), this.left, this.right, this.splitPlane;
+    (this.point = point), this.left, this.right, this.splittingAxis = depth;
   }
   //? When I start to assign left and right do I need to do a type check
 }
@@ -46,12 +47,12 @@ class KDTree {
       closestPoint: null,
       minDistance: Infinity,
     };
-    console.log("Finding the nearest node to target ...");
-    console.log(currentNode);
-    //* Short cut distance check on current node
+    // console.log("Finding the nearest node to target ...");
+    // console.log(currentNode);
     //? How do know if the current node is the leaf : ANSWER they have no children nodes (left and right = null)
 
     if (currentNode.left == null && currentNode.right == null) {
+      console.log("Found Leaf Node ... Begining Back Tracking ...")
       return {
         closestPoint: currentNode,
         minDistance: this.DistanceTo(target, currentNode.point),
@@ -59,25 +60,65 @@ class KDTree {
     }
 
     const splittingAxis = depth % this.k;
+    // splittingAxis == 0 ? console.log(`Comparing based on the X Axis ${splittingAxis}`) : console.log(`Comparing based on the Y Axis ${splittingAxis}`) 
     if (
       target[splittingAxis] >= currentNode.point[splittingAxis] &&
       currentNode.right != null
     ) {
-      obj.minDistance = this.NearestToTarget(
+
+
+      obj = this.NearestToTarget(
         target,
         currentNode.right,
         depth + 1,
       );
     } else if (currentNode.left != null) {
-      obj.minDistance = this.NearestToTarget(
+      obj = this.NearestToTarget(
         target,
         currentNode.left,
         depth + 1,
       );
     }
 
-    if (this.DistanceTo(target, currentNode) < obj.minDistance) {
-      obj.minDistance = this.NearestToTarget(target, currentNode, depth + 1);
+    //* Peek if the axis is different from splitting axis of the node
+
+    
+    // if(obj.closestPoint.splittingAxis != currentNode.splittingAxis){
+    //   console.log("There is a possible better point on the other side of this axis: " + currentNode.point);
+    //   console.log("This calls spliting axis was:  " + splittingAxis)
+    //   console.log("This is the current best guess' splitting axis: " + obj.closestPoint.splittingAxis)
+    // }
+    
+    //* Is the parent node actually closer than the original min distance
+    if (this.DistanceTo(target, currentNode.point) < obj.minDistance) {
+
+        obj = {
+          closestPoint: currentNode,
+          minDistance: this.DistanceTo(target, currentNode.point),
+        }
+    }
+    else if(obj.closestPoint.splittingAxis != currentNode.splittingAxis)
+    {
+       //* Do a search on the next axis
+            if (
+          target[splittingAxis] >= currentNode.point[splittingAxis] &&
+          currentNode.right != null
+        ) {
+
+
+          obj = this.NearestToTarget(
+            target,
+            currentNode.right,
+            depth + 1,
+          );
+        } else if (currentNode.left != null) {
+          obj = this.NearestToTarget(
+            target,
+            currentNode.left,
+            depth + 1,
+          );
+        }
+
     }
 
     return obj;
@@ -134,5 +175,6 @@ let Liurinia = [
 const points = [...Calied, ...Liurinia, ...limgrave];
 const tree = new KDTree(null, points);
 tree.PrintRoot();
+console.log("The target point is: " + [122, -85])
 let a = tree.NearestToTarget([122, -85], tree.root);
-console.log(JSON.stringify(a));
+
