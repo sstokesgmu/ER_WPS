@@ -4,7 +4,7 @@ class Node {
   }
   //? When I start to assign left and right do I need to do a type check
 }
-class KDTree {
+export class KDTree {
   constructor(k = 2, arr = null) {
     if (typeof k != "number") {
       console.warn("You sent a vlaue that is not of type nuumber for the key");
@@ -144,17 +144,11 @@ const mapData = {
     [288.41, 82.06],
   ],
 };
-const points = Object.values(mapData).flat();
-const tree = new KDTree(null, points);
-tree.PrintRoot();
-console.log("The target point is: " + [122, -85]);
-let a = tree.NearestToTarget([300, 129], tree.root);
-console.log(a);
+// const points = Object.values(mapData).flat();
+// const tree = new KDTree(null, points);
+// tree.PrintRoot();
+// console.log("The target point is: " + [122, -85]);
+// let a = tree.NearestToTarget([300, 129], tree.root);
+// console.log(a);
 
-for (let key in mapData) {
-  mapData[key].some((el) => {
-    return el == a.closestPoint.point;
-  })
-    ? console.log(`Player is located in ${key}`)
-    : null;
-}
+// 
