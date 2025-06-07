@@ -5,4 +5,4 @@ lua_modules
 .luarocks
 .zed
 Rules
-.env
+/NodeServer/.env
