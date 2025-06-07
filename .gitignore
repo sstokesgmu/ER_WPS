@@ -5,3 +5,4 @@ lua_modules
 .luarocks
 .zed
 Rules
+.env
