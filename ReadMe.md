@@ -10,20 +10,21 @@ I am working on creating a digital mapping and navigation application for *Elden
   - **Three.js** (for 3D visualization)
 
 ---
+## ToDo: 6/7
+[ ] The KD tree is not working as exprected, the nearest neighbor is way of that what it should be, so I need to fix that
+   - First we can use Jest.js to set up a testing environment
+   - Test various cases to see the result
+   - Refector if needed
+[ ] I just realizrd the locations provided by the elden ring API; or at least the version I have, does places like Calied or Volcano Manor wo I will need to add that manually
+   - Use this resource to to pick keep points
+   - In game with Cheat Engine find the best possible X and y for each point of interest
+   - Add the the MondoDB table or create a script to automate adding all those areas
+[ ] **Build the Factory** The factory will be the class used to open and re pack the data from the Lua Game Server or the Front end so I need to make sure that at least it can
+   - Build a player object
+   - Build a location and sub location object      
 
+--
 ## Completed
-- [ ] **Accessing Game Data:** Initially, I attempted to extract game data on my own, assuming it would be straightforward, but I was mistaken. Modern games, especially online ones, use dynamic memory allocation, meaning values like HP (Health) can be stored at different memory addresses each time the game starts. Using a mod has simplified the process by focusing solely on data extraction.
-  
-- [ ] **Setting up Communication Endpoints:** I created a communication stream between the Lua application (via Cheat Engine) and the Node.js application using sockets. The Node app formats and parses the data before sending it to the frontend. However, I realized that Cheat Engine cannot handle my current Lua socket configuration. To resolve this, Cheat Engine will now write data to a file on a timer, which the Node application will access.
-
----
-
-## TODO
-- [ ] **Connect Applications (Cheat Engine & Node)**
-- [ ] **Import 3D Model** into the Three.js scene
-- [ ] **Adjust Scene Perspective** to align with the player's position
-- [ ] **Update 3D Map Model** - The maps need improvements, such as better textures and topology
-- [ ] **Create Models** - We need models for the player, dungeon (castle), trees, a Farum Azula piece, NPCs, and bosses
 
 --- 
 
