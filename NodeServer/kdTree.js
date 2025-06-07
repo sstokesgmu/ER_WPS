@@ -46,6 +46,8 @@ export class KDTree {
       closestPoint: null,
       minDistance: Infinity,
     };
+
+    
     // console.log("Finding the nearest node to target ...");
     // console.log(currentNode);
     //? How do know if the current node is the leaf : ANSWER they have no children nodes (left and right = null)
@@ -94,7 +96,6 @@ export class KDTree {
         obj = this.NearestToTarget(target, currentNode.left, depth + 1);
       }
     }
-
     return obj;
   }
   DistanceTo(point1, point2) {
@@ -109,46 +110,45 @@ export class KDTree {
     return Math.sqrt(cumulative);
   }
 }
-const mapData = {
-  Limgrave: [
-    [73.8, 347.3],
-    [340.9, 603.8],
-    [90.5, 123.2],
-    [63.36, -88.02],
-    [36.4, -69.14],
-    [54.27, -26.14],
-    [104.47, -114.78],
-    [0, 44.8],
-    [-8.8, -18.51],
-    [98.48, 112.97],
-  ],
-  Calied: [
-    [151.76, 30.32],
-    [122.07, -82.49],
-    [162.27, -23.74],
-    [38.83, -82.52],
-    [145.6, 117.79],
-    [345.36, 14.79],
-    [-4.94, -111.65],
-    [91.76, 18.11],
-    [33.64, -43.98],
-  ],
-  Liurinia: [
-    [337.97, -71.04],
-    [151.21, -63.07],
-    [235.98, 51.3],
-    [261.09, -65.16],
-    [476.0, 11.35],
-    [367, -62.62],
-    [424, 120],
-    [288.41, 82.06],
-  ],
-};
+// const mapData = {
+//   Limgrave: [
+//     [73.8, 347.3],
+//     [340.9, 603.8],
+//     [90.5, 123.2],
+//     [63.36, -88.02],
+//     [36.4, -69.14],
+//     [54.27, -26.14],
+//     [104.47, -114.78],
+//     [0, 44.8],
+//     [-8.8, -18.51],
+//     [98.48, 112.97],
+//   ],
+//   Calied: [
+//     [151.76, 30.32],
+//     [122.07, -82.49],
+//     [162.27, -23.74],
+//     [38.83, -82.52],
+//     [145.6, 117.79],
+//     [345.36, 14.79],
+//     [-4.94, -111.65],
+//     [91.76, 18.11],
+//     [33.64, -43.98],
+//   ],
+//   Liurinia: [
+//     [337.97, -71.04],
+//     [151.21, -63.07],
+//     [235.98, 51.3],
+//     [261.09, -65.16],
+//     [476.0, 11.35],
+//     [367, -62.62],
+//     [424, 120],
+//     [288.41, 82.06],
+//   ],
+// };
 // const points = Object.values(mapData).flat();
 // const tree = new KDTree(null, points);
 // tree.PrintRoot();
-// console.log("The target point is: " + [122, -85]);
-// let a = tree.NearestToTarget([300, 129], tree.root);
+// let a = tree.NearestToTarget( [151, -62.62], tree.root);
 // console.log(a);
 
-// 
+// // 

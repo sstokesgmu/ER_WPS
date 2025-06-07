@@ -82,11 +82,10 @@ udpServer.on("listening", () => {
 udpServer.on("message", (msg, rinfo) => {
     console.log('Message Recieved ...'); // Log the parsed object to verify it's correctly formatted
     const obj = JSON.parse(msg); 
-    console.log(obj)
     //* At this point we would have to destruct the message because it will include the Player NPC maybe more info -> use the Factory here 
     //? What if this is the last message from the sever -> Then we stop the server and finish the exit call  
     try {    
-      const point = ref.TREE.NearestToTarget(obj)
+      const point = ref.TREE.NearestToTarget(obj.location)
       console.log(point);
       let region = undefined;
       for (let key in mapData) {
@@ -94,9 +93,8 @@ udpServer.on("message", (msg, rinfo) => {
           region = key; break;
         }
       }
-
       console.log("Player is in: " + region);
-      run(region).catch(console.dir) //? Why is the catch outside of the scope 
+      run(region) //? Why is the catch outside of the scope 
       //! Based on the result we can query Mongo DB
       //Send that data to the frontend (Current player pos and region located in)
       //When the player loads the we find the origin again loads => teleport, die, start game
@@ -105,24 +103,25 @@ udpServer.on("message", (msg, rinfo) => {
     }
 });
 
-
-
-
 async function run(value){
   try {
     const collection = (ref.CLIENT.db('WPS')).collection('locations');
     const query = {region: `${value}`};
-
     console.log("Querying Collection ... " + collection); 
     const location = await collection.findOne(query);
     console.log(location);
-  } finally {
-    await ref.CLIENT.close()
+  } catch(e) {
+     console.dir;
   }
 }
 
+async function stop()
+{
+  await ref.CLIENT.close();
+}
 
 udpServer.on("close", () => {
+  stop();
   console.log("Connection closed");
 });
 
