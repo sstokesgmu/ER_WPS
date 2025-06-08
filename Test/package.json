@@ -1,20 +1,17 @@
 {
-  "name": "eldenring",
+  "name": "test",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js",
-    "build": "vite build",
     "test": "jest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
-    "dotenv": "^16.5.0",
-    "mongodb": "^6.17.0",
-    "ws": "^8.18.1"
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0"
   }
 }
