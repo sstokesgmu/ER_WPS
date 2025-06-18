@@ -17,6 +17,7 @@ export class KDTree {
     console.log("Building Tree ...");
     this.root = this.BuildTree(arr, 0);
     this.treeDepth = 0;
+    console.log("Tree Ready ...");
   }
   PrintRoot() {
     return console.log(
@@ -53,7 +54,7 @@ export class KDTree {
     //? How do know if the current node is the leaf : ANSWER they have no children nodes (left and right = null)
 
     if (currentNode.left == null && currentNode.right == null) {
-      console.log("Found Leaf Node ... Begining Back Tracking ...");
+      //console.log("Found Leaf Node ... Begining Back Tracking ...");
       return {
         closestPoint: currentNode,
         minDistance: this.DistanceTo(target, currentNode.point),
@@ -100,7 +101,7 @@ export class KDTree {
   }
   DistanceTo(point1, point2) {
     //! Assuming this is an array
-    console.log("Calculating distance between target and point...");
+    //console.log("Calculating distance between target and point...");
     const length = point1.length;
     let cumulative = 0;
     for (let i = 0; i < length; i++) {
@@ -150,5 +151,3 @@ export class KDTree {
 // tree.PrintRoot();
 // let a = tree.NearestToTarget( [151, -62.62], tree.root);
 // console.log(a);
-
-// // 

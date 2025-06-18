@@ -23,3 +23,27 @@ function FindChunk(playerPos) {
     `The shortest distance is ${minDistance} from ${targetKey} at ${Origins.get(targetKey).getName()} coordinates ${Origins.get(targetKey).getCoordinates()}`,
   );
 }
+
+
+  // //Deals with the subproperties get the possible keys from a DS: Set?
+  // checkData(data) {
+  //   Object.keys().forEach((key, value) => {});
+  // }
+
+  // //Builds the output
+  // createOutput() {
+  //   if (!this.firstPass) {
+  //     let origin = this.findChunk(playerPos);
+  //     output["origin"] = origin;
+  //   }
+  //   let player = {};
+  //   player["position"] = this.handlePos(x, y);
+
+  //   return this.output;
+  // }
+
+  // //Player
+  // handlePos(x, y) {
+  //   return [roundDownTwo(x), roundDownTwo(y)];
+  // }
+

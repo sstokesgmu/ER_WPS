@@ -72,19 +72,12 @@ class KDTree {
     }
 
     //* Peek if the axis is different from splitting axis of the node
-
-    // if(obj.closestPoint.splittingAxis != currentNode.splittingAxis){
-    //   console.log("There is a possible better point on the other side of this axis: " + currentNode.point);
-    //   console.log("This calls spliting axis was:  " + splittingAxis)
-    //   console.log("This is the current best guess' splitting axis: " + obj.closestPoint.splittingAxis)
-    // }
-
     //* Is the parent node actually closer than the original min distance
     if (this.DistanceTo(target, currentNode.point) < obj.minDistance) {
       obj = {
         closestPoint: currentNode,
         minDistance: this.DistanceTo(target, currentNode.point),
-      };
+      };   
     } else if (obj.closestPoint.splittingAxis != currentNode.splittingAxis) {
       //* Do a search on the next axis
       if (
@@ -110,46 +103,5 @@ class KDTree {
     return Math.sqrt(cumulative);
   }
 }
-// const mapData = {
-//   Limgrave: [
-//     [73.8, 347.3],
-//     [340.9, 603.8],
-//     [90.5, 123.2],
-//     [63.36, -88.02],
-//     [36.4, -69.14],
-//     [54.27, -26.14],
-//     [104.47, -114.78],
-//     [0, 44.8],
-//     [-8.8, -18.51],
-//     [98.48, 112.97],
-//   ],
-//   Calied: [
-//     [151.76, 30.32],
-//     [122.07, -82.49],
-//     [162.27, -23.74],
-//     [38.83, -82.52],
-//     [145.6, 117.79],
-//     [345.36, 14.79],
-//     [-4.94, -111.65],
-//     [91.76, 18.11],
-//     [33.64, -43.98],
-//   ],
-//   Liurinia: [
-//     [337.97, -71.04],
-//     [151.21, -63.07],
-//     [235.98, 51.3],
-//     [261.09, -65.16],
-//     [476.0, 11.35],
-//     [367, -62.62],
-//     [424, 120],
-//     [288.41, 82.06],
-//   ],
-// };
-// const points = Object.values(mapData).flat();
-// const tree = new KDTree(null, points);
-// tree.PrintRoot();
-// let a = tree.NearestToTarget( [151, -62.62], tree.root);
-// console.log(a);
 
-// // 
-module.exports = KDTree;
+export default KDTree;
