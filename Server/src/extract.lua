@@ -10,14 +10,14 @@ print(
     "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 
 ------------------------------------------------------------------------------------------------
--- Timer
-
-
-
-
-
-------------------------------------------------------------------------------------------------
+-- Timer: This is a Timer that is used to send data to the Node Server on an interval. This timer
+-- is used in conjunction with the State Machine in order to control the flow of data being sent
+-- to the server. The timer is used to execute a function at a specified interval. The function
+-- is defined by the State Machine and is used to send the data to the server.
 -- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
+-------------------------------------------------------------------------------------------------  
+
+
 
 -- Server Configuration and Creation
 Server = {
@@ -184,7 +184,7 @@ function StateMachine.new(datacollector, server)
             local coords3D = self.collector:GetPlayerPosition()
 
             self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
-            self.collector:FindChunk()
+            self.collector:FindApproximateRegion()
             local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
            -- if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
             -- local playerData = JSON.encode(self.collector.playerIns)
@@ -221,12 +221,6 @@ function StateMachine.new(datacollector, server)
     }
     return self
 end
-
--- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
-local udpServer = Server.new(socket, "127.0.0.1", 4000, "127.0.0.1")
-local DATACOLLECTOR = DataCollector.new()
-local stateMachine = StateMachine.new(DATACOLLECTOR,udpServer)
-local timer = nil
 ------------------------------------------------------------------------------------------------
 -- STATE MACHINE
 
@@ -394,7 +388,7 @@ function DataCollector.distanceBetween(pos1, pos2)
     end
 end
 
-function DataCollector:FindChunk()
+function DataCollector:FindApproximateRegion()
     local minDistance = math.huge
     local targetKey = nil
     for k, v in pairs(self.LocationOrigins) do
@@ -487,13 +481,16 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     return result
 end
 
-function startMonitoring()
-    --Create Server and StateMachine
+function startMonitoring(udpServer)
+    local DATACOLLECTOR = DataCollector.new()
+    local stateMachine = StateMachine.new(DATACOLLECTOR,udpServer)
+    local timer = nil
+
     if timer ~= nil then -- we already create the timer no need to make another one
         print(" Timer was already created ")
         return
     end
-    print("creating Timer")
+    print("Creating Timer ... ")
 
     -- Crate an instance of timer
     timer = createTimer(getMainForm());
@@ -503,15 +500,19 @@ function startMonitoring()
         print("Timer created successfully!")
     end
     timer.Interval = 2000;
-    udpServer.running = true;
+
     print("Inside start monitoring no error yet messing with the timer and server instance")
     timer.OnTimer = function(sender)
         local success, error = pcall(
             function()
+                if not timer then return end -- exit the loop when the State Machine is closing
+                
+                --
+                
+                
                 -- call the current state methods
                 local result = stateMachine.actions[stateMachine.current]();
-                if not timer then return end -- exit the loop when the State Machine is closing
-
+                
                 if result then print("The state machine return successfully on current state: " .. stateMachine.current) end
                 -- local data = JSON.encode(result);
                 -- --nil check? why
@@ -546,5 +547,64 @@ function stopMonitoring()
         "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 end
 
--- This is definately not the right numbers
-startMonitoring()
+
+-- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
+
+--! First we need to check if the elden ring game is running
+function attachToProcess()
+    --Try to find Elden Ring Process
+    local pid = getProcessIDFromProcessName("eldenring.exe")
+    if not pid then print("Elden Ring is not running") return false end;
+
+    -- Try to attach to process
+    if openProcess("eldenring.exe") then
+        print ("Sucessfully attached to Elden Ring!");
+        -- Run the enable script
+        --Scripts sotread with memory records are of type vtAutoAssembler
+        local script = getAddressList().getMemoryRecordByDescription("[ Enable ]");
+        if script then
+            print("Found script in memory records, executing...");
+            --Set the script to active If your script is already stored in a memory record, the right way is:
+            script.Active = true;
+            return true 
+        else
+            print("Could not find the Enable script!");
+            return false
+        end
+    else
+        print("Failed to attach to Elden Ring!");
+        return false;
+    end
+end
+function setup()
+
+    -- TODO:go into file state elden ring.exe
+
+    if not attachToProcess() then
+        error("Could not attach to Elden Ring. Please start the game first!");
+    end
+    -- Confirm Connection to server 
+    local udpServer = Server.new(socket, "127.0.0.1", 4000, "127.0.0.1",true)
+
+    --Send a ping expect a peer pong 
+    udpServer.protocol:send("ping");
+    local data = udpServer.protocol:receive(4);
+    if data then
+        print("Connected to Peer Server ... " + data)
+        --! now we can run the start monitoring function      
+        return udpServer
+    else 
+        print("Failed to connect to Peer Server")
+        return nil
+    end
+end
+
+function deattachProcess()
+   -- Remove Cheat Engine from elden ring process 
+end
+
+local udpServer = setup();
+if udpServer then
+    udpServer.running = true;
+    startMonitoring(udpServer)
+end
