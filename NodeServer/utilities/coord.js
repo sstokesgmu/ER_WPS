@@ -1,3 +1,5 @@
+// Servers as validation for when we get the region
+
 const mapData = {
   Limgrave: [
     [73.8, 347.3],
@@ -11,7 +13,7 @@ const mapData = {
     [-8.8, -18.51],
     [98.48, 112.97],
   ],
-  Calied: [
+  Caelid: [
     [151.76, 30.32],
     [122.07, -82.49],
     [162.27, -23.74],

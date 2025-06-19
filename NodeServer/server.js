@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import { config } from "dotenv";
 
 const udpServer = dgram.createSocket("udp4");
+udpServer.bind(4001);
 
 let obj = {};
 let playerLoaded = false;
@@ -31,10 +32,10 @@ const wss = new WebSocketServer({
    // Add CORS headers in the server upgrade event
     verifyClient: (info, callback) => {
         // Allow all origins in development
-        callback(true, 200, 'OK', {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        });
+        // callback(true, 200, 'OK', {
+        //     'Access-Control-Allow-Origin': '*',
+        //     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+        // });
     }
 })
 
@@ -49,6 +50,10 @@ udpServer.on("listening", () => {
   ref = { FACTORY: new Factory(), CLIENT: client };
   Object.freeze(ref);
 });
+
+udpServer.on("connect", () =>{
+  console.log("Connected to client");
+})
 
 // Also handle the upgrade event
 wss.on('headers', (headers) => {
@@ -112,27 +117,31 @@ wss.on('close', ()=>{
 
 udpServer.on("message", async (msg, rinfo) => {
   console.log("Message Recieved ..."); // Log the parsed object to verify it's correctly formatted
-  const obj = JSON.parse(msg);
+ 
+  //const obj = JSON.parse(msg);
   //* At this point we would have to destruct the message because it will include the Player NPC maybe more info -> use the Factory here
 
-  //? What if this is the last message from the sever -> Then we stop the server and finish the exit call
-  try {
-    ref.FACTORY.Build(obj);
-    ref.FACTORY.Send();
-    let location = ref.FACTORY.GetLocation().GetRegion();
-    const result = await run(location);
+  console.log(obj); 
+  console.log(rinfo);
+  udpServer.send("pong", rinfo.port, rinfo.address); 
+  // //? What if this is the last message from the sever -> Then we stop the server and finish the exit call
+  // try {
+  //   ref.FACTORY.Build(obj);
+  //   ref.FACTORY.Send();
+  //   let location = ref.FACTORY.GetLocation().GetRegion();
+  //   const result = await run(location);
  
-    wsClients.forEach((client)=>{
-      if(client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({
-          type:'location_update',
-          data: {
-            location: location,
-            result: result,
-          }
-        }));
-      }
-    });
+  //   wsClients.forEach((client)=>{
+  //     if(client.readyState === WebSocket.OPEN) {
+  //       client.send(JSON.stringify({
+  //         type:'location_update',
+  //         data: {
+  //           location: location,
+  //           result: result,
+  //         }
+  //       }));
+  //     }
+  //   });
 
     
 
@@ -146,9 +155,9 @@ udpServer.on("message", async (msg, rinfo) => {
     // udpServer.close();
     // wss.close();
  
-  } catch (e) {
-    console.error("Failed to parse message as JSON:", e);
-  }
+  // } catch (e) {
+  //   console.error("Failed to parse message as JSON:", e);
+  // }
 });
 
 async function run(value) {
@@ -171,4 +180,4 @@ udpServer.on("close", () => {
   console.log("Closing Lua Client Connection...");
 });
 
-udpServer.bind(4001);
+

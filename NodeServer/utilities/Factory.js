@@ -11,27 +11,41 @@ import boundaries from './coord.js'
 export class Factory {
   output = {};
   nativeObj = {};
-  TREE;
-  constructor(){ 
+  fullTree = null;
+  //regionTrees;
+  constructor(region = null){ 
     console.log("Creating new Instance of Factory")
     //? Here we are losing the ability to define number of axes for out KD tree, Do we even want to? 
-    this.TREE = new KDTree(2,Object.values(boundaries).flat());
+    this.fullTree = new KDTree(2,Object.values(boundaries).flat());
+    
+    // this.regionTrees = {
+    //   Limgrave: new KDTree(2,Object.values(boundaries.Limgrave)),
+    //   Caelid: new KDTree(2,Object.values(boundaries.Caelid)),
+    //   Liurnia: new KDTree(2,Object.values(boundaries.Liurinia))
+    // }
   }
-  Build(obj) {
-    console.log(obj)
+
+  Build(nativeObj) {
+    console.log(nativeObj)
     //Store a copy of  the object 
-    this.nativeObj = {...obj};
+    this.obj = {...nativeObj};
     console.log(this.nativeObj.coords2D)
-
-
-    //TODO: Validate what properties the object has ? What does this mean 
-    const nearest = this.TREE.NearestToTarget(this.nativeObj.coords2D);
-    //! Add the result to the output
-    this.output.location=new Location(nearest);
+    this.DoFullSearch(this.nativeObj.coords2D);
+    //TODO: Validate what properties the object has ? What does this mean
+    
+    // if (this.obj.region){
+    //     const nearest = this.regionTrees[this.obj.region].NearestToTarget(this.obj.coords2D);
+    //     this.output.location = new Location(nearest);
+    // }
   }
   Send() {console.log(this.output)}
   //! We need to make sure build is called first before we start calling getters 
   GetLocation(){return this.output.location}
+  DoFullSearch(coords2D){
+    const nearest = this.fullTree.NearestToTarget(coords2D);
+    this.output.location = new Location(nearest);
+    this.fullTree = null; //Free up memory
+  }
 }
 
 //Player Npcs Locations
