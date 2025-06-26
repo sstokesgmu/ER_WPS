@@ -15,7 +15,7 @@ print(
 -- to the server. The timer is used to execute a function at a specified interval. The function
 -- is defined by the State Machine and is used to send the data to the server.
 -- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
--------------------------------------------------------------------------------------------------  
+-------------------------------------------------------------------------------------------------
 
 
 
@@ -28,16 +28,16 @@ Server = {
     targetip = nil
 }
 
-function Server.new(socket, serverAddress, port, targetAddress, running)
+function Server.new(socket, serverAddress, port, targetAddress)
     local self = setmetatable({}, { __index = Server })
-    self.running = running
+    --self.running = running
     self.targetip = targetAddress
     -- Create a IIFE
     self.protocol, self.ip, self.portNumber = (function()
         local udp = socket.udp()
         udp:settimeout(1) -- Wait for async operations
         udp:setsockname(serverAddress, port)
-        udp:setpeername(targetAddress,4001)
+        udp:setpeername(targetAddress, 4001)
         local ip, portNumber = udp:getsockname()
         return udp, ip, portNumber
     end)()
@@ -45,15 +45,15 @@ function Server.new(socket, serverAddress, port, targetAddress, running)
 end
 
 Packet = {
-    player=nil,
-    location=nil,
-    npcs=nil,
+    player = nil,
+    location = nil,
+    npcs = nil,
 }
 function Packet.new(player, location, npcs)
-    local self = setmetatable({}, {__index = Packet})
-    self.player=player
-    self.location=location
-    self.npcs=npcs
+    local self = setmetatable({}, { __index = Packet })
+    self.player = player
+    self.location = location
+    self.npcs = npcs
     return self
 end
 
@@ -155,6 +155,13 @@ function DataCollector.new()
     return self
 end
 
+------------------------------------------------------------------------------------------------
+-- STATE MACHINE
+
+
+
+
+------------------------------------------------------------------------------------------------
 StateMachine = {}
 function StateMachine.new(datacollector, server)
     local self = setmetatable({}, { __index = StateMachine })
@@ -165,18 +172,18 @@ function StateMachine.new(datacollector, server)
     --https://github.com/iskolbin/lpriorityqueue
     --https://www.reddit.com/r/lua/comments/7d0rjc/how_to_approach_a_queue_in_lua_for_pathfinding/
     --https://gist.github.com/LukeMS/89dc587abd786f92d60886f4977b1953
-    self.queue = {}
-    self.States = {
-        OPEN = 1,
-        RUNNING = 2,
-        PAUSED = 3,
-        CLOSE = 4
-    }
+
     --Actions based on each STATE
     self.actions = {
         INITIAL = function()
             print("Starting System ...")
             print("Starting first call ...")
+
+            self:Flags()
+
+            -- DataFetch function needs to wrapped up in a pcall
+
+            local success
             local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 5)
             if playerdata == nil then error("Player data returned nil") end
 
@@ -185,8 +192,8 @@ function StateMachine.new(datacollector, server)
 
             self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
             self.collector:FindApproximateRegion()
-            local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
-           -- if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
+            --local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
+            -- if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
             -- local playerData = JSON.encode(self.collector.playerIns)
             -- local npcData = JSON.encode(npcData)
 
@@ -198,19 +205,24 @@ function StateMachine.new(datacollector, server)
                 end),
                 self.collector.playerIns, self.collector.currentChunk, npcData
             )
-            printTable(result,1)
+            printTable(result, 1)
 
-
-            server.protocol:send(JSON.encode(result))
+            self.server.protocol:send(JSON.encode(result))
             self.next = "RUNNING";
             print("State machine ", self.next)
+            return true;
         end,
         RUNNING = function()
             print("In Running Mode");
+            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
+            if playerdata == nil then
+                error("Player data is null nothing to send")
+            end
 
-            -- local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
-            -- if playerdata == nil then error("Player data returned nil") end
-            self.next = "CLOSE"
+           self:Flags();
+
+            self.server.protocol:send(JSON.encode(playerdata));
+            return true;
         end,
         CLOSE = function()
             print("Closing Server")
@@ -221,16 +233,33 @@ function StateMachine.new(datacollector, server)
     }
     return self
 end
-------------------------------------------------------------------------------------------------
--- STATE MACHINE
 
+function StateMachine:Flags()
+    print("Checking Flags");
+       
+    -- is the process open
+    local pid = getProcessIDFromProcessName("eldenring.exe");
+    if not pid then
+        return error("Elden Ring is not running")
+    end  
+    
+    --is the process still attached to cheat engine
+    local handle = getOpenedProcessHandle();
+    if not handle then 
+        return error ("Process is not attached to cheat engine")
+    end
+    
+    --if the server is still up and running
+    if not self.server.protocol then
+        return error("Server is not running")
+    end
+    --if Cheat engine stops
+    if not self.collector then
+        return error("Data collector is not running")
+    end
+end
 
-
-
-------------------------------------------------------------------------------------------------
-
-
-function StateMachine:executeState() self.actions[self.current]() end
+-- function StateMachine:executeState() self.actions[self.current]() end
 
 -- function StateMachine:changeState()
 --     if self.States[newState] then
@@ -249,7 +278,7 @@ function StateMachine:executeState() self.actions[self.current]() end
 ------------------------------------------------------------------------------------------------
 
 function DataCollector.buildTablefromAddressList(list, start, limit)
-    print("Fetching values from address table")
+    --print("Fetching values from address table")
     if limit < start then
         limit = start + 1
     elseif limit > #list then
@@ -258,7 +287,7 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
     local retrieveTable = {}
     for k, v in ipairs(list) do
         if k > limit then
-            print("Finished at", k, v)
+            --print("Finished at", k, v)
             break -- Optionally stop after exceeding the limit
         end
         local blankT = {}
@@ -271,8 +300,6 @@ function DataCollector.buildTablefromAddressList(list, start, limit)
 
     return retrieveTable
 end
-
-
 
 function DepthExecute(table, callback)
     -- Base Case the table is empty exit recursion loop
@@ -316,7 +343,7 @@ function MergeTables(dst, ...)
     if not type(dst) == "table" then dst = {} end
     for i = 1, n do
         local data = select(i, ...)
-        print("Type of data at index ", i , " is of type " , type(data))
+        print("Type of data at index ", i, " is of type ", type(data))
         table.insert(dst, data)
     end
     return dst
@@ -325,24 +352,23 @@ end
 function printTable(tbl, indent)
     -- Set a default indentation level if not provided
     indent = indent or 0
-    
+
     -- Iterate over each key-value pair in the table
     for key, value in pairs(tbl) do
         -- Indentation for visual hierarchy in nested tables
         local indentStr = string.rep("  ", indent)
-        
+
         if type(value) == "table" then
             -- If the value is a table, print the key and recursively call printTable for the nested table
             print(indentStr .. key .. ": {")
-            printTable(value, indent + 1)  -- Recursively print nested tables with increased indentation
-            print(indentStr .. "}")         -- Close the nested table
+            printTable(value, indent + 1) -- Recursively print nested tables with increased indentation
+            print(indentStr .. "}")       -- Close the nested table
         else
             -- If it's not a table, print the key and value
             print(indentStr .. key .. ": " .. tostring(value))
         end
     end
 end
-
 
 function DataCollector:GetPlayerPosAddr()
     local pointer = readQword(self.WorldChrMan) -- Access self.WorldChrMan
@@ -383,6 +409,8 @@ function DataCollector.distanceBetween(pos1, pos2)
     else
         -- Dealing with a 2D system
         local px, py = table.unpack(pos1)
+        print(type(px))
+        print(px);
         local ex, ey = table.unpack(pos2)
         return math.sqrt((px - ex) * (px - ex) + (py - ey) * (py - ey))
     end
@@ -397,6 +425,8 @@ function DataCollector:FindApproximateRegion()
             print("Player instance or player coordinates are not found")
             break
         end
+
+        print(type(self.playerIns.coords2D));
         local dist = self.distanceBetween(self.playerIns.coords2D, v)
         if dist < minDistance then
             minDistance = dist
@@ -420,8 +450,11 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local px, py, pz = table.unpack(self.playerIns.coords3D)
     if not px or not py or not pz then return end
 
-    
-    if not self.currentChunk then error("The current area is not defined") return end 
+
+    if not self.currentChunk then
+        error("The current area is not defined")
+        return
+    end
 
     local currentChunk = self.currentChunk
     print("This is where the player is at: ", currentChunk)
@@ -439,41 +472,42 @@ function DataCollector:TraverseNPCTable(WorldChrMan)
     local count = self:GetCharacterCount(WorldChrMan)
     local result = {}
     print("current npc count ", count)
-    for i = 0, count-1 do
+    for i = 0, count - 1 do
         print("I is: ", i)
         local p = readQword(begin + i * 8)
         if p and p >= 65536 then
-            local x=readInteger(p+8)
-            x=readSmallInteger(p+0x74)
-            x=readInteger(p+0x60, true) --Param ID
+            local x = readInteger(p + 8)
+            x = readSmallInteger(p + 0x74)
+            x = readInteger(p + 0x60, true) --Param ID
             local id = x;
             print("The Param ID is", x)
-            x=readByte(p+0x6C) --108
-            p=readQword(p+0x190) -- 400 and changing the address of p
+            x = readByte(p + 0x6C)   --108
+            p = readQword(p + 0x190) -- 400 and changing the address of p
             -- p = readQword(p+0x1FC)
             -- print("Data at value: ", p) -- p = readQword(p+0x1FC)
-            x=readQword(p) -- value at p -- include this
-            x=readQword(x+0x138) -- 312
-            x=readQword(p+0x18) -- 24
-            x=readInteger(x+0x40,true) -- Animation id --64 --x = (p+0x190)
+            x = readQword(p)                -- value at p -- include this
+            x = readQword(x + 0x138)        -- 312
+            x = readQword(p + 0x18)         -- 24
+            x = readInteger(x + 0x40, true) -- Animation id --64 --x = (p+0x190)
             print("Animation ID is", x)
             if x < 1 then goto continue end
             local animID = x;
 
-            p=readQword(p+0x68)
+            p = readQword(p + 0x68)
             print("Data at value: ", p)
-            x=readFloat(p+0x70)
+            x = readFloat(p + 0x70)
             print("Data at value: ", x)
             print(x)
-            local y=readFloat(p+0x74)
+            local y = readFloat(p + 0x74)
             print(y)
-            local z=readFloat(p+0x78)
-            print(z) 
+            local z = readFloat(p + 0x78)
+            print(z)
 
             local name = DepthSearch(id, npcs)
             if not name then goto continue end
 
-            local npc = NPC.new(id, name, 111, animID, {x,y,z}, self.distanceBetween(DATACOLLECTOR.playerIns.coords3D,{x,y,z}))
+            local npc = NPC.new(id, name, 111, animID, { x, y, z },
+                self.distanceBetween(DATACOLLECTOR.playerIns.coords3D, { x, y, z }))
             table.insert(result, npc)
             ::continue::
         end
@@ -483,7 +517,7 @@ end
 
 function startMonitoring(udpServer)
     local DATACOLLECTOR = DataCollector.new()
-    local stateMachine = StateMachine.new(DATACOLLECTOR,udpServer)
+    local stateMachine = StateMachine.new(DATACOLLECTOR, udpServer)
     local timer = nil
 
     if timer ~= nil then -- we already create the timer no need to make another one
@@ -499,54 +533,43 @@ function startMonitoring(udpServer)
     else
         print("Timer created successfully!")
     end
-    timer.Interval = 2000;
+    timer.Interval = 500;
 
     print("Inside start monitoring no error yet messing with the timer and server instance")
     timer.OnTimer = function(sender)
         local success, error = pcall(
             function()
                 if not timer then return end -- exit the loop when the State Machine is closing
-                
-                --
-                
-                
                 -- call the current state methods
                 local result = stateMachine.actions[stateMachine.current]();
-                
                 if result then print("The state machine return successfully on current state: " .. stateMachine.current) end
-                -- local data = JSON.encode(result);
-                -- --nil check? why
-                -- --udpServer.protocol:sendto(data, udpServer.targetip, udpServer.portNumber)
-                -- --Print a log
-                -- print("Successfully sent data to: ", udpServer.targetip, "  with a  state of: ",
-                --     StateMachine.currentState)
                 -- Listen for server call or input from the use
                 if stateMachine.next ~= nil then
-                    print("StateMachine does not equal null")
-
-                    --Then there was a state change
-
+                    print("Changing State to: " .. stateMachine.next)
                     stateMachine.current = stateMachine.next;
                 end
             end)
         if not success then
             print("Error occurred: ", error)
-            stopMonitoring()
+            stopMonitoring(timer, stateMachine.server)
         end
     end
 end
 
-function stopMonitoring()
+function stopMonitoring(timer, server)
     --There is no timer to destroy
     if timer == nil then return end
     print("Closed program")
     -- return nil
     timer.destroy() --cleanup
     timer = nil
+
+    -- Break down the server
+    server.protocol:close()
+    os.execute('cd "C:\\Users\\sterl\\Desktop\\EldenRing_Hackathon\\Automate" && .\\stop.bat')
     print(
         "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 end
-
 
 -- Example: Listening on the local IP address 192.168.1.10 and targetting the same address.
 
@@ -554,11 +577,14 @@ end
 function attachToProcess()
     --Try to find Elden Ring Process
     local pid = getProcessIDFromProcessName("eldenring.exe")
-    if not pid then print("Elden Ring is not running") return false end;
+    if not pid then
+        print("Elden Ring is not running")
+        return false
+    end;
 
     -- Try to attach to process
     if openProcess("eldenring.exe") then
-        print ("Sucessfully attached to Elden Ring!");
+        print("Sucessfully attached to Elden Ring!");
         -- Run the enable script
         --Scripts sotread with memory records are of type vtAutoAssembler
         local script = getAddressList().getMemoryRecordByDescription("[ Enable ]");
@@ -566,7 +592,7 @@ function attachToProcess()
             print("Found script in memory records, executing...");
             --Set the script to active If your script is already stored in a memory record, the right way is:
             script.Active = true;
-            return true 
+            return true
         else
             print("Could not find the Enable script!");
             return false
@@ -576,35 +602,95 @@ function attachToProcess()
         return false;
     end
 end
-function setup()
 
-    -- TODO:go into file state elden ring.exe
+function setup()
+    startEldenRing(
+        function()
+            local op1, e1, code1 = os.execute(
+            'cd "C:\\Users\\sterl\\Desktop\\EldenRing_Hackathon\\Automate" && .\\start.bat')
+            if not op1 then error(string.format("Failed to launch Elden Ring: %s (code: %s)", e1, code1)) end
+
+
+            sleep(5000); -- wait for the server to start
+
+            -- Confirm Connection to server
+            local udpServer = Server.new(socket, "127.0.0.1", 4000, "127.0.0.1", true)
+
+            --Send a ping expect a peer pong
+            udpServer.protocol:send("ping");
+            local data = udpServer.protocol:receive(4);
+            if data then
+                print("Peer Server is active ... " .. data)
+                startMonitoring(udpServer);
+            else
+                print("Failed to connect to Peer Server ... Ending setup")
+                return nil
+            end
+        end
+    );
+    -- -- this line prints right away, before the worker finishes
+    print("Player in Game (waiting for confirmation…)");
+end
+
+function startEldenRing(syncCall)
+    -- Start the Node server and the front end server
+    local op2, e2, code2 = os.execute(
+        'cd "C:\\Program Files (x86)\\Steam\\steamapps\\common\\ELDEN RING\\Game" && .\\offline_launcher_2.0.bat')
+    sleep(10000)
+
+    if not op2 then error(string.format("Failed to launch Elden Ring: %s (code: %s)", e2, code2)) end
+    print("Elden Ring launched successfully")
 
     if not attachToProcess() then
         error("Could not attach to Elden Ring. Please start the game first!");
     end
-    -- Confirm Connection to server 
-    local udpServer = Server.new(socket, "127.0.0.1", 4000, "127.0.0.1",true)
 
-    --Send a ping expect a peer pong 
-    udpServer.protocol:send("ping");
-    local data = udpServer.protocol:receive(4);
-    if data then
-        print("Connected to Peer Server ... " + data)
-        --! now we can run the start monitoring function      
-        return udpServer
-    else 
-        print("Failed to connect to Peer Server")
-        return nil
-    end
+    -- Once we are in the game player loaded do we start to monitor things
+    -- check a section of memory to see if the data has loaded if not
+    -- Start a background worker ---------------------------------------------
+    createThread(function()
+        local addrList = getAddressList()
+        if not addrList then
+            print("[Monitor] No address list"); return
+        end
+
+        local hpNum -- numeric HP once found
+
+        while true do
+            -- read the record safely
+            local ok, raw = pcall(function()
+                local rec = addrList.getMemoryRecordByDescription("GetHP")
+                return rec and rec.Value or nil
+            end)
+
+            if ok and raw then
+                hpNum = tonumber(raw) -- nil if "??"
+                if hpNum then
+                    print("Address list is active ... ");
+                    ------------------------------------------------------
+                    --  Call back into the UI thread once we’re successful
+                    ------------------------------------------------------
+                    synchronize(function()
+                        print("Confirmed: Player is inside world ... Syncing to main thread...");
+                        syncCall()
+                        return
+                    end)
+                    return -- thread exits here
+                end
+            end
+
+            -- did the game close?
+            if not getProcessIDFromProcessName("eldenring.exe") then
+                print("[Monitor] Game closed – aborting")
+                return
+            end
+            sleep(1000)
+        end
+    end)
 end
 
-function deattachProcess()
-   -- Remove Cheat Engine from elden ring process 
-end
+-- function deattachProcess()
+--    -- Remove Cheat Engine from elden ring process
+-- end
 
-local udpServer = setup();
-if udpServer then
-    udpServer.running = true;
-    startMonitoring(udpServer)
-end
+setup();
