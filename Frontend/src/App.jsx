@@ -10,7 +10,7 @@ import { useRef, useEffect } from "react";
 import socketService from "./scripts/socket";
 ("./scripts/socket");
 
-function App() {
+export default function App() {
   useEffect(() => {
     socketService.connect();
     // return () => socketService.disconnect();
@@ -64,4 +64,4 @@ function App() {
     
   );
 }
-export default App;
+
