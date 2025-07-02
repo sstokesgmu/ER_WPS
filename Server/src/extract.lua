@@ -182,8 +182,6 @@ function StateMachine.new(datacollector, server)
             self:Flags()
 
             -- DataFetch function needs to wrapped up in a pcall
-
-            local success
             local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 5)
             if playerdata == nil then error("Player data returned nil") end
 
@@ -205,7 +203,7 @@ function StateMachine.new(datacollector, server)
                 end),
                 self.collector.playerIns, self.collector.currentChunk, npcData
             )
-            printTable(result, 1)
+            --printTable(result, 1)
 
             self.server.protocol:send(JSON.encode(result))
             self.next = "RUNNING";
@@ -214,15 +212,37 @@ function StateMachine.new(datacollector, server)
         end,
         RUNNING = function()
             print("In Running Mode");
-            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 1)
-            if playerdata == nil then
-                error("Player data is null nothing to send")
-            end
+        
+            
+            -- DataFetch function needs to wrapped up in a pcall
+            local playerdata = self.collector.buildTablefromAddressList(self.collector.playerData, 1, 5)
+            if playerdata == nil then error("Player data returned nil") end
+
+            local coords2D, baseStats, attributes, resistances, armor = table.unpack(playerdata)
+            local coords3D = self.collector:GetPlayerPosition()
+
+            self.collector.playerIns = Player.new(coords2D, coords3D, baseStats, attributes, resistances, armor)
+            self.collector:FindApproximateRegion()
+            --local npcData = self.collector:TraverseNPCTable(self.collector.WorldChrMan)
+            -- if npcData then print("NPCs found: ", JSON.encode(npcData)) else print("npc data is null") end
+            -- local playerData = JSON.encode(self.collector.playerIns)
+            -- local npcData = JSON.encode(npcData)
+
+            -- Send to the serverAddress
+
+            local result = MergeTables(
+                (function(...)
+                    return Packet.new(...)
+                end),
+                self.collector.playerIns, self.collector.currentChunk --npcData
+            )
+            --printTable(result, 1)
+
 
            self:Flags();
 
-            self.server.protocol:send(JSON.encode(playerdata));
-            return true;
+            self.server.protocol:send(JSON.encode(result));
+            return true; --? What is this doing here 
         end,
         CLOSE = function()
             print("Closing Server")
@@ -533,7 +553,7 @@ function startMonitoring(udpServer)
     else
         print("Timer created successfully!")
     end
-    timer.Interval = 500;
+    timer.Interval = 1000;
 
     print("Inside start monitoring no error yet messing with the timer and server instance")
     timer.OnTimer = function(sender)

@@ -8,13 +8,12 @@ import MyNav from './MyNav.jsx';
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <MyNav/>
     <StrictMode>
       <Routes>
         {/*Layout: <Route path="/" element={} */}
         <Route index element={<Home/>}/>
         <Route path="Dashboard" element={<App/>}/>
       </Routes>
-    </StrictMode>,
+    </StrictMode>
   </BrowserRouter>
 )

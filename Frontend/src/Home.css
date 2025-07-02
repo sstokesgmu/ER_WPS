@@ -1,0 +1,153 @@
+
+/* full-viewport wrapper */
+.fill-screen {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background-color: #000; /* Black background for bars */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* the player itself - larger size with aspect ratio maintained */
+.fill-screen iframe {
+  /* Calculate size to be 90% of viewport while maintaining 16:9 aspect ratio */
+  width: 100%;
+  height: 100%;
+  
+  /* Remove default iframe styling */
+  border: none;
+  outline: none;
+  
+  /* Ensure it's centered */
+  display: block;
+}
+
+/* Alternative approach - if you want even larger video */
+.fill-screen iframe.large {
+  width: min(95vw, calc(95vh * 16/9));
+  height: min(95vh, calc(95vw * 9/16));
+  border: none;
+  outline: none;
+  display: block;
+}
+
+img{
+  width: 100%;
+  height: 100%;
+  filter: blur(2.5px);
+  transition: 1s cubic-bezier(0.39, 0.575, 0.19, 1.11);
+  object-fit: cover;
+}
+
+/* Carousel styles */
+.carousel {
+  background-color: #f1f1f1;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 1s cubic-bezier(0.39, 0.575, 0.19, 1.11);
+}
+
+/* Vignette overlay */
+.vignette-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: 
+    linear-gradient(to right, rgba(0,0,0,.6) 30%, transparent 70%),
+    linear-gradient(to bottom, rgba(0,0,0,.6) 0%, transparent 20%),
+    linear-gradient(to top, rgba(0,0,0,.6) 0%, transparent 40%);
+  background-blend-mode: multiply;
+  z-index: 1;
+}
+
+/* For ultra-wide screens, limit maximum width */
+@media (min-aspect-ratio: 21/9) {
+  .fill-screen iframe {
+    width: 80vw;
+    height: calc(80vw * 9/16);
+  }
+}
+
+/* For very tall screens, ensure video doesn't get too small */
+@media (max-aspect-ratio: 4/3) {
+  .fill-screen iframe {
+    width: calc(85vh * 16/9);
+    height: 85vh;
+  }
+}
+
+.Landing-Page-Container{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform: translate(-50%, -50%); /*pull it back by half its own size*/
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap: 1rem;
+  text-align: center;
+  z-index:2;
+}
+
+.Landing-Page-Container :first-child{
+  font-size:5rem;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+}
+.Landing-Page-Container :nth-child(2){
+  font-size:1rem;
+  color: white;
+  margin: 0;
+  max-width: 90vw;
+  max-height: 70vh;
+  overflow-wrap:anywhere;
+}
+
+button{
+  background-color: #F9BF43;
+  border-radius: 10px;
+  color: white;
+  width: 100px;
+  height: 30px;
+
+  border:none;
+  font-family: --font-main, serif;  
+}
+
+button:hover{
+  background-color: #F5AA08;
+  color: white;
+  cursor: pointer;
+}
+
+button:active{
+  background-color: #7B5504;
+  color: white;
+  transform: scale(0.95);
+  transition: transform 0.1s ease-in-out;
+}

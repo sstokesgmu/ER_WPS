@@ -1,5 +1,5 @@
 import dgram from "dgram";
-import {WebSocketServer, WebSocket} from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 import { Factory } from "./utilities/Factory.js";
 import { MongoClient } from "mongodb";
 
@@ -10,9 +10,9 @@ import { config } from "dotenv";
 const udpServer = dgram.createSocket("udp4");
 udpServer.bind(4001);
 
-let obj = {};
-let playerLoaded = false;
-let FACTORY;
+// let obj = {};
+// let playerLoaded = false;
+// let FACTORY;
 
 //? What is this dumbass
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
@@ -24,23 +24,22 @@ config({ path: path.resolve(__dirname, ".env") });
 //rinfo => is remote address info
 //Network security
 
-
-
 const wss = new WebSocketServer({
   port: 8080,
-  host:'127.0.0.1',
-   // Add CORS headers in the server upgrade event
-    verifyClient: (info, callback) => {
-        // Allow all origins in development
-        // callback(true, 200, 'OK', {
-        //     'Access-Control-Allow-Origin': '*',
-        //     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-        // });
-    }
-})
+  host: "127.0.0.1",
+  // Add CORS headers in the server upgrade event
+  verifyClient: (info, callback) => {
+    // Allow all origins in development
+    // callback(true, 200, 'OK', {
+    //     'Access-Control-Allow-Origin': '*',
+    //     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
+    // });
+  },
+});
 
 let ref;
 let wsClients = new Set();
+let msgCount = 0;
 
 udpServer.on("listening", () => {
   const address = udpServer.address();
@@ -51,24 +50,24 @@ udpServer.on("listening", () => {
   Object.freeze(ref);
 });
 
-udpServer.on("connect", () =>{
+udpServer.on("connect", () => {
   console.log("Connected to client");
-})
-
-// Also handle the upgrade event
-wss.on('headers', (headers) => {
-    headers.push('Access-Control-Allow-Origin: *');
 });
 
-//Print Server information when it starts 
-wss.on('listening', () => {
+// Also handle the upgrade event
+wss.on("headers", (headers) => {
+  headers.push("Access-Control-Allow-Origin: *");
+});
+
+//Print Server information when it starts
+wss.on("listening", () => {
   console.log(`WebSocket Server Information:
       Port: ${wss.address().port}
       Address: ${wss.address().address}
       Number of clients: ${wss.clients.size} 
       URL: ${wss.address().family}
     `);
-})
+});
 
 wss.on(`connection`, (ws, request) => {
   console.log(`Client Connection Information:
@@ -81,56 +80,70 @@ wss.on(`connection`, (ws, request) => {
     `);
 
   wsClients.add(ws);
-  
-  //Handle incoming WebSocket messages 
-  ws.on('message', (message)=>{
-    console.log('Recieved:', message.toString());
 
-    ws.send(JSON.stringify({
-      type:'ack',
-      content: 'Message Recieved',
-      originalMessage: message.toString()
-    }))
-  })
+  //Handle incoming WebSocket messages
+  ws.on("message", (message) => {
+    console.log("Recieved:", message.toString());
 
+    ws.send(
+      JSON.stringify({
+        type: "ack",
+        content: "Message Recieved",
+        originalMessage: message.toString(),
+      })
+    );
+  });
 
-  ws.on('close', ()=>{
+  ws.on("close", () => {
     wsClients.delete(ws);
-    console.log('Remove Client');
-  })
+    console.log("Remove Client");
+  });
 
-  ws.on('error', (error) => {
-    console.error('Websocket error:', error);
-  })
+  ws.on("error", (error) => {
+    console.error("Websocket error:", error);
+  });
 });
 
-//Error handling 
-wss.on('error', (error) => {
-  console.error('WebSocket Server Error: ', error);
-})
+//Error handling
+wss.on("error", (error) => {
+  console.error("WebSocket Server Error: ", error);
+});
 
-wss.on('close', ()=>{
+wss.on("close", () => {
   console.log("Closing websocket server");
-})
-
-
+});
 
 udpServer.on("message", async (msg, rinfo) => {
   console.log("Message Recieved ..."); // Log the parsed object to verify it's correctly formatted
- 
-  //const obj = JSON.parse(msg);
   //* At this point we would have to destruct the message because it will include the Player NPC maybe more info -> use the Factory here
 
-  console.log(obj); 
-  console.log(rinfo);
-  udpServer.send("pong", rinfo.port, rinfo.address); 
+  //? How can we tell this is the first message?
+  if (msgCount < 1) {
+    udpServer.send("pong", rinfo.port, rinfo.address);
+    msgCount++;
+    return; //Ends the event
+  }
+  else  {
+      try {
+        //! This shows that the server is not sending valid data: [ [ '??', '??' ] ]  
+        const obj = JSON.parse(msg)
+        Array.isArray(obj) ?  
+          udpServer.close() : ref.FACTORY.Build(obj)
+      } catch (e) {
+        //TODO: if there is a error on the Node and Lua Server then we can send a final message to the peer.
+        console.error("Failed to parse message as JSON:", e);
+      }
+  }
+
+  
+
   // //? What if this is the last message from the sever -> Then we stop the server and finish the exit call
   // try {
   //   ref.FACTORY.Build(obj);
   //   ref.FACTORY.Send();
   //   let location = ref.FACTORY.GetLocation().GetRegion();
   //   const result = await run(location);
- 
+
   //   wsClients.forEach((client)=>{
   //     if(client.readyState === WebSocket.OPEN) {
   //       client.send(JSON.stringify({
@@ -143,18 +156,16 @@ udpServer.on("message", async (msg, rinfo) => {
   //     }
   //   });
 
-    
+  //run((ref.Factory.GetLocation()) //? Why is the catch outside of the scope
+  //! Based on the result we can query Mongo DB
+  //Send that data to the frontend (Current player pos and region located in)
+  //When the player loads the we find the origin again loads => teleport, die, start game
+  // .send(`Hello Client ${result}`);
 
-   //run((ref.Factory.GetLocation()) //? Why is the catch outside of the scope
-    //! Based on the result we can query Mongo DB
-    //Send that data to the frontend (Current player pos and region located in)
-    //When the player loads the we find the origin again loads => teleport, die, start game
-    // .send(`Hello Client ${result}`);
+  //stop();
+  // udpServer.close();
+  // wss.close();
 
-    //stop();
-    // udpServer.close();
-    // wss.close();
- 
   // } catch (e) {
   //   console.error("Failed to parse message as JSON:", e);
   // }
@@ -169,7 +180,7 @@ async function run(value) {
   } catch (e) {
     console.dir;
   }
-};
+}
 
 async function stop() {
   await ref.CLIENT.close();
@@ -179,5 +190,3 @@ udpServer.on("close", () => {
   stop();
   console.log("Closing Lua Client Connection...");
 });
-
-

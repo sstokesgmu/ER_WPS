@@ -1,12 +1,12 @@
 @echo off
 echo Starting Elden Ring Servers...
 
-::Start Frontend
-start cmd /k "cd ../Frontend && yarn dev"
+@REM ::Start Frontend
+@REM start cmd /k "cd ../Frontend && yarn dev"
 
-::Give Vite a moment to start 
-timeout /t 2 /nobreak
+@REM ::Give Vite a moment to start 
+@REM timeout /t 2 /nobreak
 
 :: Start Backend
-start cmd /k "cd ../NodeServer && npm run dev"
+start cmd /k "cd ../NodeServer && nodemon server.js"
 echo Done! Servers are starting up 

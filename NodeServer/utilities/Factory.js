@@ -25,26 +25,39 @@ export class Factory {
     // }
   }
 
-  Build(nativeObj) {
-    console.log(nativeObj)
-    //Store a copy of  the object 
-    this.obj = {...nativeObj};
-    console.log(this.nativeObj.coords2D)
-    this.DoFullSearch(this.nativeObj.coords2D);
-    //TODO: Validate what properties the object has ? What does this mean
+  Build(nativeObj, ...args) {
+    //Right now we will have a player object contains the    
     
+    /**
+     * nativeObj = {
+     *  player: ...
+     *  location: ... 
+     *  npcs: ... 
+     * }
+     */
+
+      const {player, location} = nativeObj;
+
+      console.log(player.coords2D)
+      //Check to see if the location is correct
+      this.DoFullSearch(player.coords2D);
+      console.log(`Lua Server Location is ${location} while Node server location is ${this.output.location.region}`);
+
     // if (this.obj.region){
     //     const nearest = this.regionTrees[this.obj.region].NearestToTarget(this.obj.coords2D);
     //     this.output.location = new Location(nearest);
     // }
   }
+
+
   Send() {console.log(this.output)}
   //! We need to make sure build is called first before we start calling getters 
   GetLocation(){return this.output.location}
   DoFullSearch(coords2D){
+    // console.log(this.fullTree); //TODO: Null check to see if the full tree is active
     const nearest = this.fullTree.NearestToTarget(coords2D);
     this.output.location = new Location(nearest);
-    this.fullTree = null; //Free up memory
+    // this.fullTree = null; //Free up memory
   }
 }
 
