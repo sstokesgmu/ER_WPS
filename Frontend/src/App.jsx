@@ -18,45 +18,47 @@ export default function App() {
 
 
 
-   
+const BoxHelper = () => {
+  const ref = useRef();
+  useHelper(ref, THREE.BoxHelper, "black");
 
-  const BoxHelper = () => {
-    const ref = useRef();
-    useHelper(ref, THREE.BoxHelper, "black");
-    const { position, color, opacity, transparent } = useControls({
-      position: { x: 0, y: 0.5, z: 0 },
-      color: "gray",
-      opacity: { value: 0.4, min: 0, max: 1, step: 0.01 },
-      transparent: true,
-    });
+  const GUI = useControls({
+    position: { x: 0, y: 0, z: 0 },
+    color: "gray",
+    opacity: { value: 0.4, min: 0, max: 1, step: 0.01 },
+    transparent: true,
+  });
 
-    
-    useFrame(({clock})=>{
+  const runtimePosition = useRef(new THREE.Vector3(GUI.position.x, GUI.position.y, GUI.position.z));
 
-        if(socketService != null) 
-        {
-          if(socketService.message.length >= 1)
-          {
-              const {} = socketService.message[0];
-              position.x=coords2D.x;
-              position.z=coords2D.y;
-              position.y=0;
-              //Shift all the elements to the left
-              for(let i = 1; i < socketService.message.length-1; i++);
-              {
-                socketService.message[i-1] = socketService[i];
-              }
-          }
-        }
-    });  
+  useFrame((_, delta) => {
+    // Process new socket data
+    if (socketService?.message.length >= 1) {
+      const { origin, coords2D } = socketService.message[0].data;
+
+      console.log(`Origin: ${origin}`);
+      console.log(`Coords: ${coords2D}`);
+
+      runtimePosition.current.set(coords2D[0], 0, coords2D[1]);
+
+      // Clean up the processed message
+      socketService.message.shift();
+    }
+
+    // Animate position
+    if (ref.current) {
+      const blend = 1 - Math.exp(-5 * delta); // 5 = speed factor
+      ref.current.position.lerp(runtimePosition.current, blend);
+    }
+  });
 
     return (
-      <mesh ref={ref} position={[...Object.values(position)]}>
+      <mesh ref={ref}>
         <boxGeometry />
         <meshBasicMaterial
-          color={color}
-          transparent={transparent}
-          opacity={opacity}
+          color={GUI.color}
+          transparent={GUI.transparent}
+          opacity={GUI.opacity}
         />
       </mesh>
     );

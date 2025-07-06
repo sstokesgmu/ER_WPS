@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import {mapData,origin} from './coords';
+import mapData, {origin} from './coords.js';
 
 const wss = new WebSocketServer({
     port:8080,
@@ -68,17 +68,27 @@ setInterval(()=>{
     wsClients.forEach(client => {
         if(client.readyState == WebSocket.OPEN)
         {
+            console.log(
+                {type:'location-update',
+                data:{
+                    origin:origin,
+                    coords2D: [x + increment, y + increment],
+                    bounds: mapData.Limgrave
+                }}
+                )
+
             client.send(JSON.stringify({
                 type:'location-update',
                 data:{
                     origin:origin,
-                    coords: [x + increment, y + increment],
-                    bounds: mapData.Limgrave,
+                    //? Do we want to represent as an object or an array Threejs interprets as an array
+                    coords2D: [x + increment, y + increment],
+                    bounds: mapData.Limgrave
                 }
             }))
         }
     })
-    increment++
+    increment++;
     x++
     y++
 },3000, origin,x,y,increment)

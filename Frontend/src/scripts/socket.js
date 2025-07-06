@@ -27,13 +27,8 @@ class WebSocketService {
 
         this.ws.addEventListener('message', (e) => {
             try {
-                const data = JSON.parse(e.data);
+                this.message.push(JSON.parse(e.data));
                 
-                
-                
-                
-                
-                this.message.push(data);
                 //Handle the message directly here if needed
             } catch(error) {
                 console.error("Parse error:", error);
