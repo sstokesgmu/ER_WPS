@@ -27,14 +27,6 @@ config({ path: path.resolve(__dirname, ".env") });
 const wss = new WebSocketServer({
   port: 8080,
   host: "127.0.0.1",
-  // Add CORS headers in the server upgrade event
-  verifyClient: (info, callback) => {
-    // Allow all origins in development
-    // callback(true, 200, 'OK', {
-    //     'Access-Control-Allow-Origin': '*',
-    //     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
-    // });
-  },
 });
 
 let ref;
