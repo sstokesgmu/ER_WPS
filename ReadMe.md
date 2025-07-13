@@ -10,32 +10,20 @@ I am working on creating a digital mapping and navigation application for *Elden
   - **Three.js** (for 3D visualization)
 
 ---
-## ToDo: 6/7
-- [X] The KD tree is not working as exprected, the nearest neighbor is way of that what it should be, so I need to fix that
-    **So it turns out after I send message to the node endpoint I was send the object and forgot to access the property of the object**
-   - [ ] First we can use Jest.js to set up a testing environment
-   - [ ] Test various cases to see the result
-   - Refectoring
-      - [ ] Even though the KD Tree works I still fell that we can rewrite some things to make it easier to understand
-      - [ ] Need to start throwing type checks 
-
+## ToDo: 7/12
 - [ ] I just realized the locations provided by the elden ring API; or at least the version I have, does places like Calied or Volcano Manor wo I will need to add that manually
-   - Use this resource to to pick keep points
-   - In game with Cheat Engine find the best possible X and y for each point of interest
-   - Add the the MondoDB table or create a script to automate adding all those areas
+- [ ] Create a script to scan the address space of the game to find the player, mapId, and other useful data, after that we can work on the Frontend
 
-
-- [ ] **Build the Factory** The factory will be the class used to open and re pack the data from the Lua Game Server or the Front end so I need to make sure that at least it can
-   - Build a player object
-   -[X] Build a location and sub location object :       
+  
 ---
 ## Mistakes 
-
-- [ ] You exposed your .env in the commit dumb dumb, change the connection string for the mongodb
 
 ---
 
 ## Completed
 
 --- 
-
+- [X] **Build the Factory** The factory functions as a class constructor handling data sent from packets, this functions on the Node server
+    - [X] Build a location object
+- [X] The KD tree is used to approximate the current position of the character is world space
+    - [ ] The tree works, however it is not the result that we want, to get a better source of truth we should find the map id while in game. 
